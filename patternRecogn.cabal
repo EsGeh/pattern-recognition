@@ -33,10 +33,10 @@ library
   hs-source-dirs:      src
   exposed-modules:
     PatternRecogn
-    , PatternRecogn.LinearRegression
+    , PatternRecogn.Gauss
   other-modules:
   ghc-options:
-    -rtsopts -with-rtsopts=-N -Wno-tabs
+    -Wno-tabs
   build-depends:
     base
     , hmatrix
