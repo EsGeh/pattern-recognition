@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 module Main where
 
-import PatternRecogn.ExampleClassificationAlgorithm
+import PatternRecogn.LinearRegression
 
 import qualified Numeric.LinearAlgebra as Lina
 import Numeric.LinearAlgebra hiding( Matrix, Vector )
