@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 module Main where
 
-import PatternRecogn.LinearRegression
+import PatternRecogn.ExampleClassificationAlgorithm
 
 import qualified Numeric.LinearAlgebra as Lina
 import Numeric.LinearAlgebra hiding( Matrix, Vector )
@@ -62,14 +62,14 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 		(inputLabels, inputData) <-
 			prepareInputData (`elem` [fromIntegral label1, fromIntegral label2]) <$>
 			readData inputDataFormat "resource/zip.test"
-		let beta = calcBeta trainingSet1 trainingSet2
-		let classified = classify (label1,label2) beta inputData
+		let classificationParam = calcClassificationParams trainingSet1 trainingSet2
+		let classified = classify (label1,label2) classificationParam inputData
 		let result =  calcClassificationQuality (cmap round $ inputLabels) classified
 		liftIO $ putStrLn $
 			descriptionString
 				trainingSet1
 				trainingSet2
-				beta
+				classificationParam
 				inputData
 				classified
 				result
@@ -108,11 +108,11 @@ testParamsFromLabels x y =
 	in
 		(filePath1, filePath2, x, y)
 
-descriptionString set1 set2 beta inputData classified result =
+descriptionString set1 set2 param inputData classified result =
 	unlines $
 	[ concat $ ["set1 size:", show $ size set1]
 	, concat $ ["set2 size:", show $ size set2]
-	, concat $ ["beta size:", show $ size beta]
+	, infoStringForParam param
 	, concat $ ["inputData size:", show $ size inputData]
 	, concat $ ["result: --------------------"]
 	, concat $ ["classification quality:", show $ result]
