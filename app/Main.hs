@@ -3,6 +3,8 @@
 {-# LANGUAGE TupleSections #-}
 module Main where
 
+import PatternRecogn.LinearRegression
+
 import qualified Numeric.LinearAlgebra as Lina
 import Numeric.LinearAlgebra hiding( Matrix, Vector )
 import qualified Numeric.LinearAlgebra as Lina
@@ -12,11 +14,6 @@ import Control.Monad.Except
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
-import Foreign.C.Types( CInt )
-
-type Matrix = Lina.Matrix Double
-type Vector = Lina.Vector Double
-type Label = CInt
 
 type ErrT m a = ExceptT String m a
 
@@ -89,6 +86,7 @@ readData fmtOpts path =
 -- (helpers: )
 -----------------------------------------------------------------
 
+-- | given the input data as a matrix the rows are filtered by a condition
 prepareInputData :: (Double -> Bool) -> Matrix -> (Vector, Matrix)
 prepareInputData filterRowsBy = 
 	(\rawInput ->
@@ -119,61 +117,6 @@ descriptionString set1 set2 beta inputData classified result =
 	, concat $ ["result: --------------------"]
 	, concat $ ["classification quality:", show $ result]
 	]
-
------------------------------------------------------------------
--- actual code:
------------------------------------------------------------------
-
-calcBeta :: Matrix -> Matrix -> Vector
-calcBeta set1 set2 =
-	flatten $ -- matrix to vector
-	let
-		x =
-			prependOnes $
-				set1
-				===
-				set2
-		y =
-			konst (-1) (count1,1)
-			===
-			konst 1 (count2,1)
-		count1 = rows set1
-		count2 = rows set2
-		xTr_times_x_SAFE =
-			let
-				xTr_times_x = tr' x <> x
-			in
-				if det xTr_times_x > 0.01
-				then xTr_times_x
-				else
-					xTr_times_x + (alpha * ident (rows xTr_times_x))
-					where alpha = 0.01
-	in
-		inv xTr_times_x_SAFE <> tr' x <> y
-
-calcClassificationQuality :: Lina.Vector Label -> Lina.Vector Label -> Double
-calcClassificationQuality expected res =
-	(/ fromIntegral (size res)) $
-	sum $
-	map (\x -> if x/=0 then 0 else 1) $
-	toList $
-	expected - res
-
-classify :: (Label, Label) -> Vector -> Matrix -> Lina.Vector Label
-classify (labelNeg, labelPos) beta input =
-	cmap (assignLabels . sgn) $
-		prependOnes input #> beta
-	where
-		sgn :: Double -> Double
-		sgn x =
-			let temp = signum x in
-				if temp /= 0 then temp else 1
-		assignLabels x
-			| x < 0 = labelNeg
-			| otherwise = labelPos
-
-prependOnes m =
-	konst 1 (rows m,1) ||| m
 
 -----------------------------------------------------------------
 -- utils:
