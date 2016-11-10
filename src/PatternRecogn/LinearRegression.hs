@@ -8,7 +8,6 @@ import qualified Numeric.LinearAlgebra as Lina
 import Foreign.C.Types( CInt )
 
 
-
 type Matrix = Lina.Matrix Double
 type Vector = Lina.Vector Double
 type Label = CInt
