@@ -9,7 +9,7 @@ Das Programm kann folgendermaßen ausgeführt werden:
 ## Implementierung
 
 Der gesamte Code sowie die ausführbare Datei befindet sich im beigefügten Archiv.
-Der Code wird als Github-Repository verwaltet (https://github.com/EsGeh/pattern-recognition).
+Der Code wird als Github-Repository verwaltet (siehe <https://github.com/EsGeh/pattern-recognition>).
 Um das Programm selbst zu installieren und zu kompilieren, siehe unten.
 
 ### Ordnerstruktur
@@ -144,16 +144,14 @@ Für jedes Sample wird jeweils berechnet, welche Klasse gemessen mit der Mahalan
 
 ### Abhängigkeiten
 
-* [git]
-* [stack]
-
-[git]: https://git-scm.com/
-[stack]: https://docs.haskellstack.org/
+* git (siehe <https://git-scm.com/>)
+* stack (siehe <https://docs.haskellstack.org/>)
 
 ### Kompilieren
 
 	$ git clone https://github.com/EsGeh/pattern-recognition
-	$ git checkout gaussClassification
+	$ git checkout exercise3-release
+	$ stack setup
 	$ stack build
 
 ### Ausführen mittels Stack
