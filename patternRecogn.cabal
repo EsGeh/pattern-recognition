@@ -33,7 +33,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     PatternRecogn
-    , PatternRecogn.LinearRegression
+    , PatternRecogn.ExpectationMax
   other-modules:
   ghc-options:
     -rtsopts -with-rtsopts=-N -Wno-tabs

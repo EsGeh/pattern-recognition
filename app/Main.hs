@@ -3,7 +3,7 @@
 {-# LANGUAGE TupleSections #-}
 module Main where
 
-import PatternRecogn.ExampleClassificationAlgorithm
+import PatternRecogn.ExpectationMax
 
 import qualified Numeric.LinearAlgebra as Lina
 import Numeric.LinearAlgebra hiding( Matrix, Vector )
@@ -19,11 +19,14 @@ type ErrT m a = ExceptT String m a
 
 trainingDataFormat =
 	CSV.defaultDecodeOptions
+trainingDataPath = "resource/2d-em.csv"
 
+{-
 inputDataFormat =
 	CSV.defaultDecodeOptions{
 		CSV.decDelimiter = fromIntegral (ord ' ')
 	}
+-}
 
 
 -----------------------------------------------------------------
@@ -35,8 +38,10 @@ main =
 	handleErrors $
 	do
 		mapM_
-			(uncurry4 testWithData . uncurry testParamsFromLabels) $
-			allPairs [3,5,7,8]
+			(\count ->
+				plot =<< (calcClassificationParams count <$> readData trainingDataFormat trainingDataPath)
+			)
+			classCountList
 	where
 		handleErrors x =
 			do
@@ -45,7 +50,13 @@ main =
 					(\err -> putStrLn $ "ERROR: " ++ err)
 					return
 					valOrErr
+		classCountList = [1..10]
 
+plot :: ClassificationParam -> ErrT IO ()
+plot params =
+	undefined
+
+{-
 testWithData :: FilePath -> FilePath -> Label -> Label -> ErrT IO ()
 testWithData trainingFile1 trainingFile2 label1 label2 =
 	do
@@ -73,6 +84,7 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 				inputData
 				classified
 				result
+-}
 
 readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
 readData fmtOpts path =
