@@ -24,20 +24,11 @@ data Class
 
 calcClassificationParams :: Int -> Matrix -> ClassificationParam
 calcClassificationParams classCount set =
-	undefined
+	[]
 
 infoStringForParam :: ClassificationParam -> String
 infoStringForParam param =
-	undefined
-
-{-
-calcClasses :: Matrix -> Classes
-calcClasses m =
-
-calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
-calcClassificationParams set1 set2 =
-	-- TODO: insert code
--}
+	"classes description: <to be implemented>"
 
 {-
 classify :: (Label, Label) -> ClassificationParam -> Matrix -> Lina.Vector Label

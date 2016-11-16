@@ -20,7 +20,6 @@ type ErrT m a = ExceptT String m a
 trainingDataFormat =
 	CSV.defaultDecodeOptions
 trainingDataPath = "resource/2d-em.csv"
-
 {-
 inputDataFormat =
 	CSV.defaultDecodeOptions{
@@ -37,10 +36,9 @@ main :: IO ()
 main =
 	handleErrors $
 	do
+		trainingData <- readData trainingDataFormat trainingDataPath
 		mapM_
-			(\count ->
-				plot =<< (calcClassificationParams count <$> readData trainingDataFormat trainingDataPath)
-			)
+			(flip runOnce trainingData)
 			classCountList
 	where
 		handleErrors x =
@@ -52,39 +50,28 @@ main =
 					valOrErr
 		classCountList = [1..10]
 
+runOnce count trainingData =
+	do
+		liftIO $ putStrLn $ startIterationInfo
+		let param = calcClassificationParams count trainingData
+		liftIO $ putStrLn $
+			concat $
+			[ descriptionString trainingData param
+			, "plotting..."
+			]
+		plot param
+	where
+		startIterationInfo =
+			concat $
+			[ "----------------------------------------------\n"
+			, "running EM algorithm with "
+			, show count
+			, " classes..."
+			]
+
 plot :: ClassificationParam -> ErrT IO ()
 plot params =
-	undefined
-
-{-
-testWithData :: FilePath -> FilePath -> Label -> Label -> ErrT IO ()
-testWithData trainingFile1 trainingFile2 label1 label2 =
-	do
-		liftIO $ putStrLn $ concat $
-			[ "----------------------------------------------\n"
-			, "classifying to labels ", show [label1, label2]
-			, " in files ", show [trainingFile1, trainingFile2]
-			]
-		[trainingSet1, trainingSet2] <-
-			mapM (readData trainingDataFormat) $
-			[ trainingFile1
-			, trainingFile2
-			]
-		(inputLabels, inputData) <-
-			prepareInputData (`elem` [fromIntegral label1, fromIntegral label2]) <$>
-			readData inputDataFormat "resource/zip.test"
-		let classificationParam = calcClassificationParams trainingSet1 trainingSet2
-		let classified = classify (label1,label2) classificationParam inputData
-		let result =  calcClassificationQuality (cmap round $ inputLabels) classified
-		liftIO $ putStrLn $
-			descriptionString
-				trainingSet1
-				trainingSet2
-				classificationParam
-				inputData
-				classified
-				result
--}
+	return ()
 
 readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
 readData fmtOpts path =
@@ -98,36 +85,10 @@ readData fmtOpts path =
 -- (helpers: )
 -----------------------------------------------------------------
 
--- | given the input data as a matrix the rows are filtered by a condition
-prepareInputData :: (Double -> Bool) -> Matrix -> (Vector, Matrix)
-prepareInputData filterRowsBy = 
-	(\rawInput ->
-		(
-			flatten $ (rawInput ?? (All, Take 1)),
-			rawInput ?? (All, Drop 1)
-		)
-	)
-	.
-	fromLists
-	.
-	filter (filterRowsBy . head)
-	.
-	toLists
-
-testParamsFromLabels x y =
-	let
-		[filePath1, filePath2] = map (("resource/train." ++) . show) [x,y]
-	in
-		(filePath1, filePath2, x, y)
-
-descriptionString set1 set2 param inputData classified result =
+descriptionString set1 param =
 	unlines $
 	[ concat $ ["set1 size:", show $ size set1]
-	, concat $ ["set2 size:", show $ size set2]
 	, infoStringForParam param
-	, concat $ ["inputData size:", show $ size inputData]
-	, concat $ ["result: --------------------"]
-	, concat $ ["classification quality:", show $ result]
 	]
 
 -----------------------------------------------------------------
