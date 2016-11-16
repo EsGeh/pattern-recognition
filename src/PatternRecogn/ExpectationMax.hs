@@ -18,8 +18,8 @@ type Label = CInt
 type Classes = [Class]
 data Class
 	= Class {
-		min :: Vector,
-		cov :: Matrix
+		class_min :: Vector,
+		class_cov :: Matrix
 	}
 
 calcClassificationParams :: Int -> Matrix -> ClassificationParam

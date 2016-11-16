@@ -26,6 +26,10 @@ executable patternRecogn-exe
     , mtl
     , bytestring
     , vector
+    , Chart
+    , Chart-diagrams
+    , data-default-class
+    , lens
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
 

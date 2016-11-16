@@ -4,18 +4,16 @@
 module Main where
 
 import PatternRecogn.ExpectationMax
+import Plot
+import Types
 
 import qualified Numeric.LinearAlgebra as Lina
 import Numeric.LinearAlgebra hiding( Matrix, Vector )
-import qualified Numeric.LinearAlgebra as Lina
 
 import qualified Data.Csv as CSV
-import Control.Monad.Except
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
-
-type ErrT m a = ExceptT String m a
 
 trainingDataFormat =
 	CSV.defaultDecodeOptions
@@ -48,18 +46,19 @@ main =
 					(\err -> putStrLn $ "ERROR: " ++ err)
 					return
 					valOrErr
-		classCountList = [1..10]
+		classCountList = [1..2]
 
 runOnce count trainingData =
 	do
 		liftIO $ putStrLn $ startIterationInfo
-		let param = calcClassificationParams count trainingData
+		let param =
+			calcClassificationParams count trainingData
 		liftIO $ putStrLn $
 			concat $
 			[ descriptionString trainingData param
 			, "plotting..."
 			]
-		plot param
+		plot plotPath trainingData param
 	where
 		startIterationInfo =
 			concat $
@@ -68,10 +67,7 @@ runOnce count trainingData =
 			, show count
 			, " classes..."
 			]
-
-plot :: ClassificationParam -> ErrT IO ()
-plot params =
-	return ()
+		plotPath = concat $ ["plots/", show count, ".svg"]
 
 readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
 readData fmtOpts path =
