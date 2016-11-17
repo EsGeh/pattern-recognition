@@ -37,19 +37,26 @@ calcClassificationParams ::
 	MonadRandom m =>
 	Int -> Matrix -> m ClassificationParam
 calcClassificationParams classCount set =
+	fmap (
+		last .
+		take 1 .
+		iterate (nextExpect set)
+	) $
+	startExpect classCount set
+
+nextExpect :: Matrix -> Classes -> Classes
+nextExpect set classes =
+	classes
+
+startExpect :: forall m . MonadRandom m => Int -> Matrix -> m Classes
+startExpect classCount set  =
 	let
-		minMax :: ((R,R),(R,R))
-		minMax =
+		((minX, minY),(maxX, maxY)) =
 			minMaxVec $
 			map vecToTuple $
 			toRows set
 	in
-		uncurry (startExpect classCount) minMax
-
-startExpect :: forall m . MonadRandom m => Int -> (R,R) -> (R,R) -> m Classes
-startExpect classCount (minX, minY) (maxX, maxY) =
 	do
-		
 		mins <-
 			fmap (map vecFromTuple) $
 			liftM2 zip
@@ -57,10 +64,65 @@ startExpect classCount (minX, minY) (maxX, maxY) =
 				(getRandomRs (minY, maxY))
 			:: m [Vector]
 		let covs = repeat $ Lina.ident 2
-
 		return $
 			take classCount $
 			zipWith Class mins covs
+
+-- copied from branch gaussClassification:
+average x =
+	(/ fromIntegral (length x)) $
+	sum $
+	x
+
+cov_SAFE min set =
+	if det cov > 0.01
+	then cov
+	else cov + alpha * ident (rows cov)
+	where
+		cov = covariance min set
+		alpha = 0.01
+
+covariance :: Vector -> Matrix -> Matrix
+covariance min set =
+	let
+		centeredAroundMin = set - repmat (asRow min) countSamples 1
+		countSamples = rows set
+	in
+		(/ fromIntegral countSamples) $
+		sum $
+		map (\v -> v `outer` v) $
+		toRows $
+		centeredAroundMin
+
+mahalanobis :: Vector -> Matrix -> Vector -> R
+mahalanobis min cov x =
+	let
+		centeredX = x - min
+		inputDist =
+			centeredX `dot` (inv cov #> centeredX)
+	in
+		1/sqrt (det (2 * pi * cov))
+		*
+		exp (-1/2 * inputDist)
+
+{-
+classify :: (Label, Label) -> ClassificationParam -> Matrix -> Lina.Vector Label
+classify (labelNeg, labelPos) ClassificationParam{..} =
+	fromList
+	.
+	map classifySingleVec
+	.
+	toRows
+	where
+		classifySingleVec :: Vector -> Label
+		classifySingleVec x =
+			if
+				mahalanobis min1 covariance1 x > mahalanobis min2 covariance2 x
+			then
+				labelNeg
+			else
+				labelPos
+-}
 
 vecFromTuple :: (R,R) -> Vector
 vecFromTuple (x,y) =

@@ -41,7 +41,7 @@ library
     , PatternRecogn.ExpectationMax
   other-modules:
   ghc-options:
-    -rtsopts -with-rtsopts=-N -Wno-tabs
+    -Wno-tabs
   build-depends:
     base
     , hmatrix
