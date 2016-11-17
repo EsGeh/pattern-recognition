@@ -22,13 +22,14 @@ plot path dots params =
 		return ()
 	where
 		diagram =
-			Chart.layout_title .~ "title" $
+			Chart.layout_title .~ path $
 			Chart.layout_plots .~
-				([ toPlot $ pointsPlot
-				]
-				++
-				classPlot
-				) $
+				(
+					[ toPlot $ pointsPlot]
+					++
+					classPlot
+				)
+				$
 			def
 		pointsPlot =
 			plot_points_values .~ points $
@@ -42,14 +43,22 @@ plot path dots params =
 			map (\p -> singleEllipse p `joinPlot` singleCenterDot p)
 				params
 		singleEllipse Class{..} =
+			plotVectorField $
+				plot_vectors_values .~
+					[(vecToTuple class_min, (1,1))] $
+				plot_vectors_scale .~ 0 $ -- no scaling
+				plot_vectors_style .~ (vector_head_style .~ (point_shape .~ PointShapeArrowHead 1 $ def) $ def) $
+				def
+			{-
 			toPlot $
 			plot_points_style .~ style $
 			plot_points_values .~ [vecToTuple class_min]$
 			def
 			where
 				style =
-					point_radius .~ 1 $
+					--point_radius .~ 1 $
 					def
+			-}
 		singleCenterDot Class{..} =
 			toPlot $
 			plot_points_style .~ style $
@@ -59,8 +68,9 @@ plot path dots params =
 				style =
 					def
 
-
+{-
 vecToTuple = listToTuple . Lina.toList
 	where
 		listToTuple [x,y] = (x,y)
 		listToTuple _ = error "error extracting dots"
+-}

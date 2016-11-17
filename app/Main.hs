@@ -13,6 +13,8 @@ import Numeric.LinearAlgebra hiding( Matrix, Vector )
 import qualified Data.Csv as CSV
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
+
+import qualified Control.Monad.Random as Rand
 import Data.Char
 
 trainingDataFormat =
@@ -46,13 +48,13 @@ main =
 					(\err -> putStrLn $ "ERROR: " ++ err)
 					return
 					valOrErr
-		classCountList = [1..2]
+		classCountList = [1..3]
 
 runOnce count trainingData =
 	do
 		liftIO $ putStrLn $ startIterationInfo
-		let param =
-			calcClassificationParams count trainingData
+		param <-
+			liftIO $ Rand.evalRandIO $ calcClassificationParams count trainingData
 		liftIO $ putStrLn $
 			concat $
 			[ descriptionString trainingData param
