@@ -48,18 +48,16 @@ main =
 					(\err -> putStrLn $ "ERROR: " ++ err)
 					return
 					valOrErr
-		classCountList = [1..3]
+		classCountList = [1..2]
 
+runOnce :: Int -> Matrix -> ErrT IO ()
 runOnce count trainingData =
 	do
 		liftIO $ putStrLn $ startIterationInfo
-		param <-
-			liftIO $ Rand.evalRandIO $ calcClassificationParams count trainingData
-		liftIO $ putStrLn $
-			concat $
-			[ descriptionString trainingData param
-			, "plotting..."
-			]
+		(param : previous) <-
+			liftIO $ calcClassificationParams_AllSteps 10 count trainingData
+		liftIO $ putStrLn $ descriptionString trainingData param
+		liftIO $ putStrLn $ "plotting..."
 		plot plotPath trainingData param
 	where
 		startIterationInfo =
@@ -88,6 +86,9 @@ descriptionString set1 param =
 	[ concat $ ["set1 size:", show $ size set1]
 	, infoStringForParam param
 	]
+
+instance MonadLog IO where
+	doLog = putStrLn
 
 -----------------------------------------------------------------
 -- utils:
