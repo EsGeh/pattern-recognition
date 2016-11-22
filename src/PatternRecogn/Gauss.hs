@@ -22,6 +22,19 @@ data ClassificationParam
 		covariance2 :: Matrix
 	}
 
+-- fisher discriminant:
+
+calcFisherDiscr :: ClassificationParam -> (Vector, ClassificationParam)
+calcFisherDiscr = "TODO"
+
+classifyWithFisherDiscr :: (Label, Label) -> Vector -> ClassificationParam -> Matrix -> Lina.Vector Label
+classifyWithFisherDiscr labels fisherVector params =
+	classify labels params
+	.
+	asColumn . (#> fisherVector) -- multiply every sample with the fisherVector
+
+-- general gauss classification:
+
 calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams set1 set2 =
 	ret
