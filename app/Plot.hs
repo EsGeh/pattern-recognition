@@ -7,8 +7,9 @@ import PatternRecogn.ExpectationMax
 import qualified Numeric.LinearAlgebra as Lina
 import Numeric.LinearAlgebra hiding( Matrix, Vector )
 
-import Graphics.Rendering.Chart as Chart hiding( Matrix )
-import Graphics.Rendering.Chart.Backend.Diagrams as Chart
+import Graphics.Rendering.Chart.Easy as Chart hiding( Matrix, Vector )
+--import Graphics.Rendering.Chart as Chart hiding( Matrix )
+import Graphics.Rendering.Chart.Backend.Diagrams as Chart hiding( Matrix, Vector )
 import Data.Default.Class
 
 import Control.Monad.Trans
@@ -20,6 +21,51 @@ plot path dots params =
 	do
 		_ <- lift $ Chart.renderableToFile def path $ Chart.toRenderable diagram
 		return ()
+	where
+		diagram :: EC (Layout Double Double) ()
+		diagram =
+			do
+				layout_title .= path
+				Chart.plot $ points "data points" $
+					map vecToTuple $
+					Lina.toRows dots
+				Chart.plot $
+					line "classes" $
+						map (
+							\Class{..} ->
+								map vecToTuple $
+								lineFromGauss class_min class_cov
+						)
+						params
+
+lineFromGauss :: Vector -> Matrix -> [Vector]
+lineFromGauss min cov =
+	toRows $
+	(+ asRow min) $ -- shift to center
+	(<> cov) $ 			-- multiply with covariance matrix
+	circleDots 
+	where
+		circleDots =
+			cmap cos anglesMat
+			|||
+			cmap sin anglesMat
+		anglesMat = 
+			((count :: Int)><1) angles
+		angles = (/(2*pi)) <$> ([0..(count-1)] :: [Double])
+		count :: Num a => a
+		count = 100 
+
+{-
+lineFromGauss :: (R,R) -> [(R,R)]
+lineFromGauss (x,y) =
+	zip
+		(map cos angles)
+		(map sin angles)
+	where
+		angles = (/(2*pi)) <$> [0..100]
+-}
+
+{-
 	where
 		diagram =
 			Chart.layout_title .~ path $
@@ -67,6 +113,7 @@ plot path dots params =
 			where
 				style =
 					def
+-}
 
 {-
 vecToTuple = listToTuple . Lina.toList

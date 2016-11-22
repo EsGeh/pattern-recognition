@@ -48,7 +48,7 @@ main =
 					(\err -> putStrLn $ "ERROR: " ++ err)
 					return
 					valOrErr
-		classCountList = [1..2]
+		classCountList = [1..6]
 
 runOnce :: Int -> Matrix -> ErrT IO ()
 runOnce count trainingData =
