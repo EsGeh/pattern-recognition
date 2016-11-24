@@ -72,15 +72,31 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 			classifyProjected (label1,label2)
 				projectionVec projectedClassificationParam
 				inputData
+		{-
+		let classified =
+			classify (label1,label2)
+				classificationParam
+				inputData
+		-}
 		let result =  calcClassificationQuality (cmap round $ inputLabels) classified
 		liftIO $ putStrLn $
 			descriptionString
 				trainingSet1
 				trainingSet2
 				classificationParam
+				projectionVec
+				projectedClassificationParam
 				inputData
 				classified
 				result
+		{-
+		liftIO $ putStrLn $ "plotting ..."
+		plotProjected
+			(trainingFile1 ++ trainingFile2)
+			projectionVec
+			(trainingSet1 === trainingSet2)
+			(classesFromBinary classificationParam)
+		-}
 
 readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
 readData fmtOpts path =
@@ -116,11 +132,18 @@ testParamsFromLabels x y =
 	in
 		(filePath1, filePath2, x, y)
 
-descriptionString set1 set2 param inputData classified result =
+descriptionString
+	set1 set2
+	param 
+	projectionVec projectedClassificationParam
+	inputData classified result
+	=
 	unlines $
 	[ concat $ ["set1 size:", show $ size set1]
 	, concat $ ["set2 size:", show $ size set2]
 	, infoStringForParam param
+	, concat $ ["projectionVec size:", show $ size projectionVec]
+	, infoStringForParam projectedClassificationParam
 	, concat $ ["inputData size:", show $ size inputData]
 	, concat $ ["result: --------------------"]
 	, concat $ ["classification quality:", show $ result]

@@ -21,13 +21,15 @@ data ClassificationParam
 		covariance2 :: Matrix
 	}
 
+-----------------------------------------------------------------
+-- fisher discriminant:
+-----------------------------------------------------------------
+
 findProjectionWithRnd :: MonadRandom m => ClassificationParam -> m Vector
 findProjectionWithRnd param =
 	flip findProjection param  <$> randomVec
 	where
-		randomVec = vector <$> getRandoms
-
--- fisher discriminant:
+		randomVec = (vector . take (size $ min1 param)) <$> getRandoms
 
 classifyProjected :: (Label, Label) -> Vector -> ClassificationParam -> Matrix -> VectorOf Label
 classifyProjected labels projectionVec params =
@@ -39,7 +41,7 @@ findProjection :: Vector -> ClassificationParam -> Vector
 findProjection startVec params@ClassificationParam{..} =
 	last $
 	runIdentity $
-	iterateWhileM 10 (const True) (return . itFunc) $
+	iterateWhileM 100 (const True) (return . itFunc) $
 	startVec
 	where
 		itFunc :: Vector -> Vector
@@ -56,19 +58,25 @@ projectClasses projectionVec ClassificationParam{..} =
 	ClassificationParam {
 		min1 = scalar $ min1 <.> projectionVec,
 		min2 = scalar $ min2 <.> projectionVec,
-		covariance1 = error "how to define this?",
-		covariance2 = error "how to define this?"
+		covariance1 =
+			scalar $
+				projectionVec <.> (covariance1 #> projectionVec),
+		covariance2 =
+			scalar $
+				projectionVec <.> (covariance2 #> projectionVec)
 	}
 
 fisherDiscr :: ClassificationParam -> Vector -> Double
 fisherDiscr ClassificationParam{..} vec =
-	sqrt (min1 <.> vec - min2 <.> vec)
+	(min1 <.> vec - min2 <.> vec) ^ 2
 	/
 	(vec <.> (covariance1 #> vec) + vec <.> (covariance2 #> vec))
-	
 
 
+-----------------------------------------------------------------
 -- general gauss classification:
+-----------------------------------------------------------------
+
 calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams set1 set2 =
 	ret
