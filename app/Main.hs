@@ -16,6 +16,7 @@ import qualified Data.Csv as CSV
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
+import Control.Monad.Random( evalRandIO )
 
 trainingDataFormat =
 	CSV.defaultDecodeOptions
@@ -63,7 +64,14 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 			prepareInputData (`elem` [fromIntegral label1, fromIntegral label2]) <$>
 			readData inputDataFormat "resource/zip.test"
 		let classificationParam = calcClassificationParams trainingSet1 trainingSet2
-		let classified = classify (label1,label2) classificationParam inputData
+		projectionVec <- liftIO $ evalRandIO $
+			findProjectionWithRnd classificationParam
+		let
+			projectedClassificationParam = projectClasses projectionVec classificationParam
+		let classified =
+			classifyProjected (label1,label2)
+				projectionVec projectedClassificationParam
+				inputData
 		let result =  calcClassificationQuality (cmap round $ inputLabels) classified
 		liftIO $ putStrLn $
 			descriptionString

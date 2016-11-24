@@ -6,8 +6,11 @@ import PatternRecogn.Lina
 import PatternRecogn.Gauss.Utils
 import PatternRecogn.Gauss.Types
 import PatternRecogn.Types
+import PatternRecogn.Utils
 
+import Control.Monad.Random.Class
 import Data.List( intercalate )
+import Control.Monad.Identity
 
 
 data ClassificationParam
@@ -18,20 +21,54 @@ data ClassificationParam
 		covariance2 :: Matrix
 	}
 
+findProjectionWithRnd :: MonadRandom m => ClassificationParam -> m Vector
+findProjectionWithRnd param =
+	flip findProjection param  <$> randomVec
+	where
+		randomVec = vector <$> getRandoms
+
 -- fisher discriminant:
 
-calcFisherDiscr :: ClassificationParam -> (Vector, ClassificationParam)
-calcFisherDiscr = undefined
-	-- "TODO"
-
-classifyWithFisherDiscr :: (Label, Label) -> Vector -> ClassificationParam -> Matrix -> VectorOf Label
-classifyWithFisherDiscr labels fisherVector params =
+classifyProjected :: (Label, Label) -> Vector -> ClassificationParam -> Matrix -> VectorOf Label
+classifyProjected labels projectionVec params =
 	classify labels params
 	.
-	asColumn . (#> fisherVector) -- multiply every sample with the fisherVector
+	asColumn . (#> projectionVec) -- multiply every sample with the fisherVector
+
+findProjection :: Vector -> ClassificationParam -> Vector
+findProjection startVec params@ClassificationParam{..} =
+	last $
+	runIdentity $
+	iterateWhileM 10 (const True) (return . itFunc) $
+	startVec
+	where
+		itFunc :: Vector -> Vector
+		itFunc vec =
+			scalar (
+				((min1 - min2) <.> vec :: Double)
+				/
+				(fisherDiscr params vec :: Double)
+			)
+			*
+			(inv (covariance1 + covariance2) #> (min1 - min2) :: Vector)
+
+projectClasses projectionVec ClassificationParam{..} =
+	ClassificationParam {
+		min1 = scalar $ min1 <.> projectionVec,
+		min2 = scalar $ min2 <.> projectionVec,
+		covariance1 = error "how to define this?",
+		covariance2 = error "how to define this?"
+	}
+
+fisherDiscr :: ClassificationParam -> Vector -> Double
+fisherDiscr ClassificationParam{..} vec =
+	sqrt (min1 <.> vec - min2 <.> vec)
+	/
+	(vec <.> (covariance1 #> vec) + vec <.> (covariance2 #> vec))
+	
+
 
 -- general gauss classification:
-
 calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams set1 set2 =
 	ret
