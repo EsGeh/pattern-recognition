@@ -16,6 +16,9 @@ cabal-version:       >=1.10
 executable patternRecogn-exe
   hs-source-dirs:      app
   main-is:             Main.hs
+  other-modules:
+    Types
+    , Plot
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N -Wno-tabs
   build-depends:
@@ -26,6 +29,10 @@ executable patternRecogn-exe
     , mtl
     , bytestring
     , vector
+    , Chart
+    , Chart-diagrams
+    , data-default-class
+    , lens
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
 
@@ -33,10 +40,15 @@ library
   hs-source-dirs:      src
   exposed-modules:
     PatternRecogn
-    , PatternRecogn.LinearRegression
+    , PatternRecogn.ExampleClassificationAlgorithm
+    , PatternRecogn.Types
+    , PatternRecogn.Lina
+    , PatternRecogn.Utils
+    , PatternRecogn.Gauss.Types
+    , PatternRecogn.Gauss.Utils
   other-modules:
   ghc-options:
-    -rtsopts -with-rtsopts=-N -Wno-tabs
+    -Wno-tabs
   build-depends:
     base
     , hmatrix

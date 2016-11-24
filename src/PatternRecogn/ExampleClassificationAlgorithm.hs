@@ -1,28 +1,18 @@
 {-# LANGUAGE FlexibleContexts #-}
 module PatternRecogn.ExampleClassificationAlgorithm where
 
-import qualified Numeric.LinearAlgebra as Lina
-import Numeric.LinearAlgebra hiding( Matrix, Vector )
-import qualified Numeric.LinearAlgebra as Lina
+import PatternRecogn.Types
+import PatternRecogn.Utils
+--import qualified PatternRecogn.Lina as Lina
 
-import Foreign.C.Types( CInt )
-
-
-type Matrix = Lina.Matrix Double
-type Vector = Lina.Vector Double
-type Label = CInt
-
-type ClassificationParam =
-	-- TODO: insert code
 
 calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams set1 set2 =
-	-- TODO: insert code
+	()
 	
-classify :: (Label, Label) -> ClassificationParam -> Matrix -> Lina.Vector Label
+classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify (labelNeg, labelPos) param input =
 	-- TODO: insert code
-
 
 infoStringForParam :: ClassificationParam -> String
 infoStringForParam param =
@@ -30,7 +20,7 @@ infoStringForParam param =
 
 -- | helper functions
 
-calcClassificationQuality :: Lina.Vector Label -> Lina.Vector Label -> Double
+calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
 calcClassificationQuality expected res =
 	(/ fromIntegral (size res)) $
 	sum $
