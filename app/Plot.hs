@@ -2,6 +2,8 @@
 module Plot where
 
 import Types
+
+import PatternRecogn.Gauss.Utils
 import PatternRecogn.Utils
 import PatternRecogn.Lina as Lina
 import PatternRecogn.Gauss.Types
@@ -15,8 +17,9 @@ import Control.Monad.Trans
 import Control.Lens
 
 
-plotProjected :: FilePath -> Vector -> Matrix -> Classes -> ErrT IO ()
-plotProjected path projectionVec dots params =
+-- plot 1-dim data and estimated propability measure (gaussian)
+plotProjected :: FilePath -> Vector -> Classes -> ErrT IO ()
+plotProjected path dots params =
 	do
 		_ <- lift $ Chart.renderableToFile def path $ Chart.toRenderable diagram
 		return ()
@@ -26,31 +29,41 @@ plotProjected path projectionVec dots params =
 			do
 				layout_title .= path
 				Chart.plot $ points "data points" $
-					map vecToTuple $
-					Lina.toRows dots
-				Chart.plot $ vectorField "projectionVector" $
-					[ ((0,0), vecToTuple projectionVec) ]
-			{-
-				Chart.plot $
-					line "classes" $
-						map (
-							\Class{..} ->
-								map vecToTuple $
-								lineFromGauss class_min class_cov
-						)
-						params
-			-}
+					map (\x -> (x, 0)) $
+					Lina.toList dots
+				Chart.plot $ line "estimated distribution" $
+					concat $ map (\Class{..} -> gaussLine (vecToVal class_min) (matToVal class_cov)) $
+					params
 
-vectorField :: String -> [((R,R),(R,R))] -> EC (Layout R R) (Plot R R)
-vectorField title vectors =
-	fmap plotVectorField $ liftEC $
-	do
-		c <- takeColor
-		plot_vectors_values .= vectors
-		plot_vectors_style . vector_line_style . line_color .= c
-		plot_vectors_style . vector_head_style . point_color .= c
-		plot_vectors_title .= title
-		----plot_vectors_grid .= grid
+vecToVal :: Vector -> R
+vecToVal =
+	f
+	.
+	Lina.toList
+	where
+		f [x] = x
+		f _ = error "error converting to vector to scalar!"
+
+matToVal :: Matrix -> R
+matToVal =
+	f
+	.
+	Lina.toLists
+	where
+		f [[x]] = x
+		f _ = error "error converting to vector to scalar!"
+
+gaussLine :: R -> R -> [[(R,R)]]
+gaussLine min cov =
+	return $
+	map (\x -> (x, mahalanobis (scalar min) (scalar cov) (scalar x))) $
+	map (
+		\x -> (min - width / 2) + (x * width / count)
+	) $
+	[0..count]
+	where
+		count = 100 :: Num a => a
+		width = 30 * cov
 
 plot :: FilePath -> Matrix -> Classes -> ErrT IO ()
 plot path dots params =
@@ -90,3 +103,16 @@ lineFromGauss min cov =
 		angles = (/(2*pi)) <$> ([0..(count-1)] :: [Double])
 		count :: Num a => a
 		count = 100
+
+{-
+vectorField :: String -> [((R,R),(R,R))] -> EC (Layout R R) (Plot R R)
+vectorField title vectors =
+	fmap plotVectorField $ liftEC $
+	do
+		c <- takeColor
+		plot_vectors_values .= vectors
+		plot_vectors_style . vector_line_style . line_color .= c
+		plot_vectors_style . vector_head_style . point_color .= c
+		plot_vectors_title .= title
+		----plot_vectors_grid .= grid
+-}

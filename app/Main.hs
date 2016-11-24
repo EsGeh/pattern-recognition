@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main where
 
 import Plot
@@ -16,6 +17,7 @@ import qualified Data.Csv as CSV
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
+import Data.List( intercalate )
 import Control.Monad.Random( evalRandIO )
 
 trainingDataFormat =
@@ -79,6 +81,9 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 				inputData
 		-}
 		let result =  calcClassificationQuality (cmap round $ inputLabels) classified
+		let trainingProjected =
+			(#> projectionVec) $
+			(trainingSet1 === trainingSet2)
 		liftIO $ putStrLn $
 			descriptionString
 				trainingSet1
@@ -89,14 +94,12 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 				inputData
 				classified
 				result
-		{-
+
 		liftIO $ putStrLn $ "plotting ..."
 		plotProjected
-			(trainingFile1 ++ trainingFile2)
-			projectionVec
-			(trainingSet1 === trainingSet2)
-			(classesFromBinary classificationParam)
-		-}
+			(concat $ ["plots/", show label1, show label2, ".svg"])
+			trainingProjected
+			(classesFromBinary projectedClassificationParam)
 
 readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
 readData fmtOpts path =
@@ -143,10 +146,21 @@ descriptionString
 	, concat $ ["set2 size:", show $ size set2]
 	, infoStringForParam param
 	, concat $ ["projectionVec size:", show $ size projectionVec]
-	, infoStringForParam projectedClassificationParam
+	, concat $ ["projected clusters: ----------------------------"]
+	, infoStringForParam_1D projectedClassificationParam
 	, concat $ ["inputData size:", show $ size inputData]
 	, concat $ ["result: --------------------"]
 	, concat $ ["classification quality:", show $ result]
+	]
+
+
+infoStringForParam_1D :: ClassificationParam -> String
+infoStringForParam_1D ClassificationParam{..} =
+	intercalate "\n" $
+	[ concat $ ["min1:", show $ min1]
+	, concat $ ["min2:", show $ min2 ]
+	, concat $ ["cov1:", show $ covariance1 ]
+	, concat $ ["cov2:", show $ covariance2 ]
 	]
 
 -----------------------------------------------------------------

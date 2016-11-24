@@ -21,6 +21,9 @@ data ClassificationParam
 		covariance2 :: Matrix
 	}
 
+classesFromBinary ClassificationParam{..} =
+	[Class min1 covariance1, Class min2 covariance2]
+
 -----------------------------------------------------------------
 -- fisher discriminant:
 -----------------------------------------------------------------
@@ -41,11 +44,12 @@ findProjection :: Vector -> ClassificationParam -> Vector
 findProjection startVec params@ClassificationParam{..} =
 	last $
 	runIdentity $
-	iterateWhileM 100 (const True) (return . itFunc) $
+	iterateWhileM 1000 (const True) (return . itFunc) $
 	startVec
 	where
 		itFunc :: Vector -> Vector
 		itFunc vec =
+			unitary $ -- normalize
 			scalar (
 				((min1 - min2) <.> vec :: Double)
 				/
