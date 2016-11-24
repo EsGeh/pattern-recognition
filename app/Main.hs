@@ -7,7 +7,9 @@ module Main where
 import Plot
 import Types
 
+import qualified PatternRecogn.LinearRegression as Linear
 import PatternRecogn.Gauss.Binary
+-- import qualified PatternRecogn.Gauss.Binary as Gauss
 import PatternRecogn.Types
 
 import qualified Numeric.LinearAlgebra as Lina
@@ -48,6 +50,17 @@ main =
 					(\err -> putStrLn $ "ERROR: " ++ err)
 					return
 					valOrErr
+
+{-
+data LearnAndClassifyAlg param
+	= LearnAndClassifyAlg {
+		alg_train :: Matrix -> Matrix
+			-> param,
+		alg_classify ::
+			(Label, Label) -> param -> Matrix
+			-> VectorOf Label
+	}
+-}
 
 testWithData :: FilePath -> FilePath -> Label -> Label -> ErrT IO ()
 testWithData trainingFile1 trainingFile2 label1 label2 =

@@ -44,9 +44,12 @@ library
     , PatternRecogn.Types
     , PatternRecogn.Lina
     , PatternRecogn.Utils
+    -- Gauß classification:
     , PatternRecogn.Gauss.Binary
     , PatternRecogn.Gauss.Types
     , PatternRecogn.Gauss.Utils
+		-- linear regression classification:
+    , PatternRecogn.LinearRegression
   other-modules:
   ghc-options:
     -Wno-tabs
