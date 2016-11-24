@@ -74,12 +74,6 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 			classifyProjected (label1,label2)
 				projectionVec projectedClassificationParam
 				inputData
-		{-
-		let classified =
-			classify (label1,label2)
-				classificationParam
-				inputData
-		-}
 		let result =  calcClassificationQuality (cmap round $ inputLabels) classified
 		let trainingProjected =
 			(#> projectionVec) $
@@ -94,7 +88,6 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 				inputData
 				classified
 				result
-
 		liftIO $ putStrLn $ "plotting ..."
 		plotProjected
 			(concat $ ["plots/", show label1, show label2, ".svg"])
