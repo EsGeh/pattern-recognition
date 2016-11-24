@@ -1,18 +1,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
-module PatternRecogn.Gauss where
+module PatternRecogn.Gauss.Binary where
 
-import qualified Numeric.LinearAlgebra as Lina
-import Numeric.LinearAlgebra hiding( Matrix, Vector )
-import qualified Numeric.LinearAlgebra as Lina
+import PatternRecogn.Lina
+import PatternRecogn.Gauss.Utils
+import PatternRecogn.Gauss.Types
+import PatternRecogn.Types
 
 import Data.List( intercalate )
-import Foreign.C.Types( CInt )
 
-
-type Matrix = Lina.Matrix Double
-type Vector = Lina.Vector Double
-type Label = CInt
 
 data ClassificationParam
 	= ClassificationParam {
@@ -25,9 +21,10 @@ data ClassificationParam
 -- fisher discriminant:
 
 calcFisherDiscr :: ClassificationParam -> (Vector, ClassificationParam)
-calcFisherDiscr = "TODO"
+calcFisherDiscr = undefined
+	-- "TODO"
 
-classifyWithFisherDiscr :: (Label, Label) -> Vector -> ClassificationParam -> Matrix -> Lina.Vector Label
+classifyWithFisherDiscr :: (Label, Label) -> Vector -> ClassificationParam -> Matrix -> VectorOf Label
 classifyWithFisherDiscr labels fisherVector params =
 	classify labels params
 	.
@@ -46,43 +43,7 @@ calcClassificationParams set1 set2 =
 			covariance2 = cov_SAFE (min2 ret) set2
 		}
 
-average x =
-	(/ fromIntegral (length x)) $
-	sum $
-	x
-
-cov_SAFE min set =
-	if det cov > 0.01
-	then cov
-	else cov + alpha * ident (rows cov)
-	where
-		cov = covariance min set
-		alpha = 0.01
-
-covariance :: Vector -> Matrix -> Matrix
-covariance min set =
-	let
-		centeredAroundMin = set - repmat (asRow min) countSamples 1
-		countSamples = rows set
-	in
-		(/ fromIntegral countSamples) $
-		sum $
-		map (\v -> v `outer` v) $
-		toRows $
-		centeredAroundMin
-
-mahalanobis :: Vector -> Matrix -> Vector -> R
-mahalanobis min cov x =
-	let
-		centeredX = x - min
-		inputDist =
-			centeredX `dot` (inv cov #> centeredX)
-	in
-		1/sqrt (det (2 * pi * cov))
-		*
-		exp (-1/2 * inputDist)
-
-classify :: (Label, Label) -> ClassificationParam -> Matrix -> Lina.Vector Label
+classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify (labelNeg, labelPos) ClassificationParam{..} =
 	fromList
 	.
@@ -110,7 +71,7 @@ infoStringForParam ClassificationParam{..} =
 
 -- helper functions
 
-calcClassificationQuality :: Lina.Vector Label -> Lina.Vector Label -> Double
+calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
 calcClassificationQuality expected res =
 	(/ fromIntegral (size res)) $
 	sum $

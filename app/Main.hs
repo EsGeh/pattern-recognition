@@ -3,19 +3,19 @@
 {-# LANGUAGE TupleSections #-}
 module Main where
 
-import PatternRecogn.Gauss
+import Plot
+import Types
+
+import PatternRecogn.Gauss.Binary
+import PatternRecogn.Types
 
 import qualified Numeric.LinearAlgebra as Lina
 import Numeric.LinearAlgebra hiding( Matrix, Vector )
-import qualified Numeric.LinearAlgebra as Lina
 
 import qualified Data.Csv as CSV
-import Control.Monad.Except
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
-
-type ErrT m a = ExceptT String m a
 
 trainingDataFormat =
 	CSV.defaultDecodeOptions
