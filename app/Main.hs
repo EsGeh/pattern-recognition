@@ -84,6 +84,7 @@ testWithData
 			liftIO $ putStrLn $ concat $ ["projected gauss quality:", show $ quality]
 		testLinearRegression label1 label2 testInput >>= \quality ->
 			liftIO $ putStrLn $ concat $ ["linear regression quality:", show $ quality]
+
 		return ()
 		{-
 		let trainingProjected =
@@ -99,26 +100,24 @@ testWithData
 				inputData
 				classified
 				result
-		liftIO $ putStrLn $ "plotting ..."
-		plotProjected
-			(concat $ ["plots/", show label1, show label2, ".svg"])
-			trainingProjected
-			(classesFromBinary projectedClassificationParam)
-		-}
+				-}
 
 testGauss :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
 testGauss =
 	testWithAlg 
 		(\train1 train2 -> return $ Gauss.calcClassificationParams train1 train2)
-		Gauss.classify
+		classify
+	where
+		classify labels param input =
+			return $ Gauss.classify labels param input
 
 testLinearRegression :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
 testLinearRegression =
 	testWithAlg 
 		(\train1 train2 -> return $ LinearReg.calcClassificationParams train1 train2)
-		LinearReg.classify
+		(\labels param input -> return $ LinearReg.classify labels param input)
 
-testProjectedGauss :: MonadRandom m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
+testProjectedGauss :: Label -> Label -> (AlgorithmInput, Vector) -> ErrT IO Double
 testProjectedGauss =
 	testWithAlg 
 		calcParam
@@ -134,14 +133,24 @@ testProjectedGauss =
 				return $
 					(projectedClassificationParam, projectionVec) 
 		classify (label1, label2) (param, projectionVec) input =
-			Gauss.classifyProjected (label1,label2)
-				projectionVec param
-				input
+			do
+				let ret = Gauss.classifyProjected (label1,label2)
+					projectionVec param
+					input
+				--liftIO $ putStrLn $ "plotting ..."
+				plotProjected
+					(concat $ ["plots/projectedGauss-", show label1, show label2, ".svg"])
+					trainingProjected
+					(Gauss.classesFromBinary param)
+				return ret
+			where
+				trainingProjected =
+					(#> projectionVec) input
 
 testWithAlg ::
 	Monad m =>
 	(Matrix -> Matrix -> m param)
-	-> ((Label, Label) -> param -> Matrix -> VectorOf Label)
+	-> ((Label, Label) -> param -> Matrix -> m (VectorOf Label))
 	-> Label -> Label
 	-> (AlgorithmInput, Vector)
 	-> m Double
@@ -154,7 +163,7 @@ testWithAlg
 	do
 		classificationParam <-
 			calcParam algInput_train1 algInput_train2
-		let classified =
+		classified <-
 			classify (label1,label2)
 				classificationParam
 				algInput_input
