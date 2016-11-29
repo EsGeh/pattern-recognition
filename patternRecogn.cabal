@@ -50,6 +50,8 @@ library
     , PatternRecogn.Gauss.Utils
 		-- linear regression classification:
     , PatternRecogn.LinearRegression
+		-- perceptron learning classification:
+    , PatternRecogn.Perceptron
   other-modules:
   ghc-options:
     -Wno-tabs

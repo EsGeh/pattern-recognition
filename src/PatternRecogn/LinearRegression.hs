@@ -1,9 +1,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 module PatternRecogn.LinearRegression where
 
-
 import PatternRecogn.Lina
 import PatternRecogn.Types
+
 
 type ClassificationParam = Vector
 

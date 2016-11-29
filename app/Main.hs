@@ -10,6 +10,7 @@ import Types
 import qualified PatternRecogn.LinearRegression as LinearReg
 --import PatternRecogn.Gauss.Binary
 import qualified PatternRecogn.Gauss.Binary as Gauss
+import qualified PatternRecogn.Perceptron as Perceptron
 import PatternRecogn.Types
 
 import PatternRecogn.Lina as Lina
@@ -78,29 +79,25 @@ testWithData
 				trainingFile1 trainingFile2
 				label1 label2
 			:: ErrT IO (AlgorithmInput, Vector)
+		testPerceptron label1 label2 testInput
+			>>= \quality -> liftIO $ putStrLn $ concat $ ["perceptron quality:", show $ quality]
+		{-
 		testGauss label1 label2 testInput >>= \quality ->
 			liftIO $ putStrLn $ concat $ ["gauss quality:", show $ quality]
 		testProjectedGauss label1 label2 testInput >>= \quality ->
 			liftIO $ putStrLn $ concat $ ["projected gauss quality:", show $ quality]
 		testLinearRegression label1 label2 testInput >>= \quality ->
 			liftIO $ putStrLn $ concat $ ["linear regression quality:", show $ quality]
+		-}
 
 		return ()
-		{-
-		let trainingProjected =
-			(#> projectionVec) $
-			(trainingSet1 === trainingSet2)
-		liftIO $ putStrLn $
-			descriptionString
-				trainingSet1
-				trainingSet2
-				classificationParam
-				projectionVec
-				projectedClassificationParam
-				inputData
-				classified
-				result
-				-}
+
+testPerceptron :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
+testPerceptron =
+	testWithAlg
+		(\train1 train2 -> return $ Perceptron.calcClassificationParams train1 train2)
+		(\labels param input -> return $ Perceptron.classify labels param input)
+
 
 testGauss :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
 testGauss =
