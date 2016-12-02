@@ -17,35 +17,32 @@ Um das Programm selbst zu installieren und zu kompilieren, siehe unten.
 	.
 	|-- app
 	|   `-- Main.hs
-	|-- plots
-	|   |-- ...
 	|-- resource
 	|   |-- ...
 	|-- src
 	|   |-- PatternRecogn
-	|   |   `-- Gauss.hs
+	|   |   `-- Perceptron.hs
 	|   `-- ...
 
-Der Code ist folgendermaßen aufgeteilt:
+Das Programm teilt sich auf in eine ausführbare Datei (siehe Verzeichnis "./app") und eine Bibliothek (siehe Verzeichnis "./src").
+Für diese Übung relevanter Quellcode:
 
-#. Ausführbare Datei (siehe "./app")
+* "./app/Main.hs": hier befindet sich der Code zum Einlesen der Test-Daten.
 
-	In der "./app/Main.hs" befindet sich der Code zum Einlesen der Test-Daten.
-
-#. Bibliothek (siehe "./src")
-
-	Hier befindet sich die eigentliche Funktionalität des Klassifizierungsalgorithmus
+*	"./src/PatternRecogn/Perceptron.hs": Hier befindet sich die eigentliche Funktionalität des Klassifizierungsalgorithmus
 
 #. Eingabe- und Ausgabedateien
 
 Im Ordner "./resource" befinden sich die Trainingsdatensätze und der Testdatensatz.
-Im Ordner "./plots" befindet sich nach der Ausführung des Programms die Diagramme der Verteilungskurven entlang dem mittels der Fischerdiskrimination errechneten Vektor.
+Die Ausgabe erfolgt über die Standardausgabe.
 
 ### Die Funktionalität des Programms
 
 Das Programm wählt nacheinander alle 2-Tupel der Trainingsdatensätze in "./resource/train.\*" und klassifiziert die Testdaten in "./resource/zip.test":
 
-~~~ {#test .haskell .numberLines startFrom="41"}
+**"./app/Main.hs"**:
+
+~~~ {#test .haskell .numberLines startFrom="42"}
 main :: IO ()
 main =
 	handleErrors $
@@ -60,7 +57,9 @@ main =
 
 Das heißt die Funktion "testWithData" wird z.B. mit den Parametern zweier Dateinamen und den entsprechenden Labels aufgerufen.
 
-~~~ {#test .haskell .numberLines startFrom="65"}
+**"./app/Main.hs"**:
+
+~~~ {#test .haskell .numberLines startFrom="66"}
 testWithData :: FilePath -> FilePath -> Label -> Label -> ErrT IO ()
 testWithData trainingFile1 trainingFile2 label1 label2 =
 	do
@@ -70,57 +69,75 @@ testWithData trainingFile1 trainingFile2 label1 label2 =
 				trainingFile1 trainingFile2
 				label1 label2
 			:: ErrT IO (AlgorithmInput, Vector)
-		testGauss label1 label2 testInput >>= \quality ->
-			liftIO $ putStrLn $ concat $ ["gauss quality:", show $ quality]
-		testProjectedGauss label1 label2 testInput >>= \quality ->
-			liftIO $ putStrLn $ concat $ ["projected gauss quality:", show $ quality]
-		testLinearRegression label1 label2 testInput >>= \quality ->
-			liftIO $ putStrLn $ concat $ ["linear regression quality:", show $ quality]
+		testPerceptron label1 label2 testInput
+			>>= \quality -> liftIO $ putStrLn $ concat $ ["perceptron quality:", show $ quality]
 ~~~
 
-Hier werden die geladenen Daten mittels 3-er Algorithmen klassifiziert und deren Trefferquote gemessen.
-Außerdem werden im Fall der Fischerdiskrimination als Seiteneffekt errechneten Verteilungen beider Klassen als Diagramm in das Verzeichnis "plots" gespeichert.
+Hier werden die geladenen Daten mittels Perzeptron-Lernen klassifiziert und deren Trefferquote gemessen.
 
+Das Durchlauf beim Lernen funktioniert so:
+Es werden *alle* Trainingsdaten durchlaufen (zunächst die mit Label1, dann die mit Label2).
+
+**"./src/PatternRecogn/Perceptron.hs"**:
+
+~~~ {#test .haskell .numberLines startFrom="49"}
+perceptronStepAll set1 set2 param =
+	perceptronStep (-1) set1
+	.	
+	perceptronStep 1 set2
+	$
+	param
+~~~
+
+Dabei wird für jedes Sample der Trainingsmenge der Gewichtsvektor $\beta$ korrigiert, falls er das Sample nicht richtig klassifiziert:
+
+**"./src/PatternRecogn/Perceptron.hs"**:
+
+~~~ {#test .haskell .numberLines startFrom="56"}
+perceptronStep :: Label -> Matrix -> ClassificationParam -> ClassificationParam
+perceptronStep expectedLabel set param =
+	foldl conc param $ Lina.toRows set
+	where
+		conc :: ClassificationParam -> Vector -> ClassificationParam
+		conc beta y = 
+			let estimatedClass = classifySingleSample_extended (-1, 1) beta y
+			in
+				if estimatedClass == expectedLabel
+				then beta
+				else
+					if estimatedClass < 0
+					then beta + y
+					else beta - y
+~~~
+
+Dieses Verfahren wird (bis maximal 1000fach) iteriert, so lange bis der Fehler klein genug ist.
+Trotzdem bei jeder Iteration ("perceptronStepAll") alle Trainingsdaten durchlaufen werden ist die Laufzeit bemerkenswert schnell.
 
 ### Ergebnis
 
-Bei der Ausführung führt das Programm 3 verschiedene Klassifizierungsalgorithmen auf den Daten aus, und berechnet deren Trefferquote:
+Dies ist die Ausgabe des Programms:
 
-
+	$ ./scripts/run.sh
 	----------------------------------------------
 	classifying to labels [3,5] in files ["resource/train.3","resource/train.5"]
-	gauss quality:0.9447852760736196
-	projected gauss quality:0.9294478527607362
-	linear regression quality:0.9294478527607362
+	perceptron quality:0.911042944785276
 	----------------------------------------------
 	classifying to labels [3,7] in files ["resource/train.3","resource/train.7"]
-	gauss quality:0.987220447284345
-	projected gauss quality:0.9840255591054313
-	linear regression quality:0.9744408945686901
+	perceptron quality:0.9776357827476039
 	----------------------------------------------
 	classifying to labels [3,8] in files ["resource/train.3","resource/train.8"]
-	gauss quality:0.9367469879518072
-	projected gauss quality:0.9457831325301205
-	linear regression quality:0.9518072289156626
+	perceptron quality:0.9668674698795181
 	----------------------------------------------
 	classifying to labels [5,7] in files ["resource/train.5","resource/train.7"]
-	gauss quality:0.9869706840390879
-	projected gauss quality:0.9837133550488599
-	linear regression quality:0.9837133550488599
+	perceptron quality:0.9869706840390879
 	----------------------------------------------
 	classifying to labels [5,8] in files ["resource/train.5","resource/train.8"]
-	gauss quality:0.9447852760736196
-	projected gauss quality:0.9631901840490797
-	linear regression quality:0.9631901840490797
+	perceptron quality:0.9478527607361963
 	----------------------------------------------
 	classifying to labels [7,8] in files ["resource/train.7","resource/train.8"]
-	gauss quality:0.9712460063897763
-	projected gauss quality:0.9776357827476039
-	linear regression quality:0.9776357827476039
+	perceptron quality:0.9840255591054313
 
-
-Offensichtlich sind die Unterschiede von Fall zu Fall unterschiedlich. Keiner der Algorithmen ist in jedem Falle optimal.
-Die Diagramme mit den Verteilungen nach der Projektion auf den Vektor $u$ der mittels Fischerdiskrimination gefunden wurde sind im Verzeichnis ".plots/" zu finden.
+Die Klassifizierungsqualität schwankt deutlich, ist aber in allen Fällen über 90%.
 
 ## Kompilieren des Programms
 
@@ -132,7 +149,7 @@ Die Diagramme mit den Verteilungen nach der Projektion auf den Vektor $u$ der mi
 ### Kompilieren
 
 	$ git clone https://github.com/EsGeh/pattern-recognition
-	$ git checkout exercise5-release
+	$ git checkout exercise6-release
 	$ stack setup
 	$ stack build
 
