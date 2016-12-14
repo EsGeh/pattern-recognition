@@ -52,6 +52,8 @@ library
     , PatternRecogn.LinearRegression
 		-- perceptron learning classification:
     , PatternRecogn.Perceptron
+		-- neuronal networks:
+    , PatternRecogn.NeuronalNetworks
   other-modules:
   ghc-options:
     -Wno-tabs

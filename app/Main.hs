@@ -11,6 +11,7 @@ import qualified PatternRecogn.LinearRegression as LinearReg
 --import PatternRecogn.Gauss.Binary
 import qualified PatternRecogn.Gauss.Binary as Gauss
 import qualified PatternRecogn.Perceptron as Perceptron
+import qualified PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Types
 
 import PatternRecogn.Lina as Lina
