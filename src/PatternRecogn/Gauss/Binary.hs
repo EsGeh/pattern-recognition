@@ -117,8 +117,3 @@ infoStringForParam ClassificationParam{..} =
 	, concat $ ["cov1 size:", show $ size covariance1 ]
 	, concat $ ["cov2 size:", show $ size covariance2 ]
 	]
-
--- helper functions
-
-prependOnes m =
-	konst 1 (rows m,1) ||| m

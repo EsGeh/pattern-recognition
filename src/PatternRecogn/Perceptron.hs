@@ -15,8 +15,8 @@ type ClassificationParam
 calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams set1 set2 =
 	calcClassificationParams_extendedVecs
-		(prependOnes set1)
-		(prependOnes set2)
+		(extendInputData set1)
+		(extendInputData set2)
 
 calcClassificationParams_extendedVecs :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams_extendedVecs set1 set2 =
@@ -70,7 +70,7 @@ perceptronStep expectedLabel set param =
 
 classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify labels beta =
-	classify_extendedInput labels beta . prependOnes
+	classify_extendedInput labels beta . extendInputData
 
 classify_extendedInput :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify_extendedInput labels beta input =
@@ -84,7 +84,3 @@ classifySingleSample_extended (labelNeg, labelPos) beta input =
 	if (beta <.> input) >= 0
 	then labelPos
 	else labelNeg
-
-
-prependOnes m =
-	konst 1 (rows m,1) ||| m

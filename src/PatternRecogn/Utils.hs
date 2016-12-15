@@ -62,14 +62,33 @@ concIfEq indexF partitions@(firstPart:restParts) b
 	| indexF (head firstPart) == indexF (head b) = (b ++ firstPart):restParts
 	| otherwise = b : partitions
 
-vecFromTuple :: (Double,Double) -> Vector
-vecFromTuple (x,y) =
+uncurry3 f (a,b,c) = f a b c
+
+setElemAt i x l =
+	take i l
+	++ if i>=0 && i<length l then [x] else []
+	++ drop (i+1) l
+
+vecFromTuple2 :: (Double,Double) -> Vector
+vecFromTuple2 (x,y) =
 	Lina.fromList [x,y]
 
-vecToTuple :: Vector -> (Double, Double)
-vecToTuple =
+vecToTuple2 :: Vector -> (Double, Double)
+vecToTuple2 =
 	listToTuple .
 	Lina.toList
 	where
 		listToTuple [x,y] = (x,y)
 		listToTuple _ = error "error converting list to tuple"
+
+sigmoid x = 1 / (1 + exp (-x))
+sigmoidDerivFromRes x = x * (1 - x)
+{-
+sigmoidDeriv x =
+	let s = sigmoid x
+	in s * (1 - s)
+-}
+
+extendInputData :: Matrix -> Matrix
+extendInputData m =
+	konst 1 (rows m,1) ||| m

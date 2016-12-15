@@ -76,13 +76,13 @@ plot path dots params =
 			do
 				layout_title .= path
 				Chart.plot $ points "data points" $
-					map vecToTuple $
+					map vecToTuple2 $
 					Lina.toRows dots
 				Chart.plot $
 					line "classes" $
 						map (
 							\Class{..} ->
-								map vecToTuple $
+								map vecToTuple2 $
 								lineFromGauss class_min class_cov
 						)
 						params

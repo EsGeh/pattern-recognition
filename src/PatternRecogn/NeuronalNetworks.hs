@@ -36,11 +36,6 @@ outputInterpretationMaximum count =
 			\lbl -> Lina.fromList $ setElemAt (fromIntegral lbl) 1 $ replicate count 0
 	}
 
-setElemAt i x l =
-	take i l
-	++ if i>=0 && i<length l then [x] else []
-	++ drop (i+1) l
-
 calcClassificationParams :: OutputInterpretation -> NetworkDimensions -> TrainingData -> ClassificationParam
 calcClassificationParams OutputInterpretation{..} dims =
 	trainNetwork dims
@@ -49,7 +44,7 @@ calcClassificationParams OutputInterpretation{..} dims =
 	.
 	map (uncurry temp)
 	.
-	map (\(matr, lbl) -> (prependOnes matr, lbl)) -- extend training data
+	map (\(matr, lbl) -> (extendInputData matr, lbl)) -- extend training data
 	where
 		temp :: Matrix -> Label -> TrainingDataInternal
 		temp set label =
@@ -58,12 +53,6 @@ calcClassificationParams OutputInterpretation{..} dims =
 trainNetwork :: NetworkDimensions -> TrainingDataInternal -> ClassificationParam
 trainNetwork dimensions =
 	calcClassificationParams_extendedVecs dimensions
-
-{-
-	calcClassificationParams_extendedVecs
-		(prependOnes set1)
-		(prependOnes set2)
--}
 
 calcClassificationParams_extendedVecs :: NetworkDimensions -> TrainingDataInternal -> ClassificationParam
 calcClassificationParams_extendedVecs dimensions sets =
@@ -117,8 +106,6 @@ adjustWeights_forOneSample (input, expectedOutput) oldWeights =
 	in
 		backPropagate outputs derivatives err oldWeights
 
-uncurry3 f (a,b,c) = f a b c
-
 -- (steps const)
 backPropagate ::
 	[Vector] -- outputs
@@ -126,7 +113,12 @@ backPropagate ::
 	-> Vector -- error
 	-> ClassificationParam
 	-> ClassificationParam
-backPropagate outputs@(_:outputRest) derivatives@(derivHead:derivRest) err weights =
+backPropagate
+		outputs@(_:outputRest)
+		derivatives@(derivHead:derivRest)
+		err
+		weights
+	=
 	flip evalState (derivHead * err :: Vector) $
 	forM (zip3 derivRest weights outputRest) $
 		uncurry3 newWeight
@@ -152,7 +144,7 @@ feedForward weightMatrices =
 
 classify :: ClassificationParam -> Matrix -> VectorOf Label
 classify param =
-	classify_extendedInput param . prependOnes
+	classify_extendedInput param . extendInputData
 
 classify_extendedInput :: ClassificationParam -> Matrix -> VectorOf Label
 classify_extendedInput param input =
@@ -179,16 +171,3 @@ feedForward_oneStep_withDeriv weights input =
 	let output = feedForward_oneStep weights input
 	in
 		(output, Lina.cmap (\x -> x * (1 - x)) output)
-
-sigmoid x = 1 / (1 + exp (-x))
-
-sigmoidDerivFromRes x = x * (1 - x)
-
-{-
-sigmoidDeriv x =
-	let s = sigmoid x
-	in s * (1 - s)
--}
-
-prependOnes m =
-	konst 1 (rows m,1) ||| m
