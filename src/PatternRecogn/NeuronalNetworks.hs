@@ -29,6 +29,18 @@ data OutputInterpretation =
 		labelToOutput :: Label -> Vector
 	}
 
+outputInterpretationMaximum count =
+	OutputInterpretation{
+		outputToLabel = fromIntegral . Lina.maxIndex,
+		labelToOutput =
+			\lbl -> Lina.fromList $ setElemAt (fromIntegral lbl) 1 $ replicate count 0
+	}
+
+setElemAt i x l =
+	take i l
+	++ if i>=0 && i<length l then [x] else []
+	++ drop (i+1) l
+
 calcClassificationParams :: OutputInterpretation -> NetworkDimensions -> TrainingData -> ClassificationParam
 calcClassificationParams OutputInterpretation{..} dims =
 	trainNetwork dims

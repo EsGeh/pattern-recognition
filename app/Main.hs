@@ -6,26 +6,19 @@ module Main where
 
 import Plot
 import Types
+import qualified TestMultiple as TestMultiple
 
-import qualified PatternRecogn.LinearRegression as LinearReg
---import PatternRecogn.Gauss.Binary
-import qualified PatternRecogn.Gauss.Binary as Gauss
-import qualified PatternRecogn.Perceptron as Perceptron
 import qualified PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Types
 
 import PatternRecogn.Lina as Lina
-{-
-import qualified Numeric.LinearAlgebra as Lina
-import Numeric.LinearAlgebra hiding( Matrix, Vector )
--}
 
 import qualified Data.Csv as CSV
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
-import Data.List( intercalate )
 import Control.Monad.Random as Rand
+import Data.List( intercalate )
 
 trainingDataFormat =
 	CSV.defaultDecodeOptions
@@ -44,9 +37,16 @@ main :: IO ()
 main =
 	handleErrors $
 	do
-		mapM_
-			(uncurry4 testWithData . uncurry testParamsFromLabels) $
-			allPairs [3,5,7,8]
+		let
+			labels = [3,5,7,8]
+			paths = map pathFromLabel labels
+		testWithData
+			(TestMultiple.testNeuronalNetworks [10])
+			(paths `zip` labels)
+		{-
+		forM_ (allPairs [3,5,7,8]) $
+			(uncurry4 testWithDataBinary . uncurry testParamsFromLabels)
+		-}
 	where
 		handleErrors x =
 			do
@@ -56,16 +56,19 @@ main =
 					return
 					valOrErr
 
-data AlgorithmInput =
-	AlgorithmInput {
-		algInput_train1 :: Matrix,
-		algInput_train2 :: Matrix,
-		algInput_input :: Matrix
-	}
-	deriving( Show )
+testWithData :: ((TestMultiple.AlgorithmInput,Vector) -> ErrT IO Double) -> [(FilePath, Label)] -> ErrT IO ()
+testWithData testFunc l =
+	do
+		liftIO $ putStrLn $ startToClassifyInfoStr l
+		testInput <-
+			readTestInput l :: ErrT IO (TestMultiple.AlgorithmInput, Vector)
+		testFunc testInput
+			>>= \quality -> liftIO $ putStrLn $ concat $ ["quality:", show $ quality]
+		return ()
 
-testWithData :: FilePath -> FilePath -> Label -> Label -> ErrT IO ()
-testWithData
+{-
+testWithDataBinary :: FilePath -> FilePath -> Label -> Label -> ErrT IO ()
+testWithDataBinary
 		trainingFile1 trainingFile2
 		label1 label2
 	=
@@ -76,122 +79,48 @@ testWithData
 			, " in files ", show [trainingFile1, trainingFile2]
 			]
 		testInput <-
-			readTestInput
+			readTestInputBinary
 				trainingFile1 trainingFile2
 				label1 label2
 			:: ErrT IO (AlgorithmInput, Vector)
 		testPerceptron label1 label2 testInput
 			>>= \quality -> liftIO $ putStrLn $ concat $ ["perceptron quality:", show $ quality]
-		{-
-		testGauss label1 label2 testInput >>= \quality ->
-			liftIO $ putStrLn $ concat $ ["gauss quality:", show $ quality]
-		testProjectedGauss label1 label2 testInput >>= \quality ->
-			liftIO $ putStrLn $ concat $ ["projected gauss quality:", show $ quality]
-		testLinearRegression label1 label2 testInput >>= \quality ->
-			liftIO $ putStrLn $ concat $ ["linear regression quality:", show $ quality]
-		-}
-
 		return ()
+-}
 
-testPerceptron :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
-testPerceptron =
-	testWithAlg
-		(\train1 train2 -> return $ Perceptron.calcClassificationParams train1 train2)
-		(\labels param input -> return $ Perceptron.classify labels param input)
-
-
-testGauss :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
-testGauss =
-	testWithAlg 
-		(\train1 train2 -> return $ Gauss.calcClassificationParams train1 train2)
-		classify
-	where
-		classify labels param input =
-			return $ Gauss.classify labels param input
-
-testLinearRegression :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
-testLinearRegression =
-	testWithAlg 
-		(\train1 train2 -> return $ LinearReg.calcClassificationParams train1 train2)
-		(\labels param input -> return $ LinearReg.classify labels param input)
-
-testProjectedGauss :: Label -> Label -> (AlgorithmInput, Vector) -> ErrT IO Double
-testProjectedGauss =
-	testWithAlg 
-		calcParam
-		classify
-	where
-		calcParam train1 train2 =
-			do
-				let param = Gauss.calcClassificationParams train1 train2
-				projectionVec <-
-					Gauss.findProjectionWithRnd param
-				let projectedClassificationParam =
-					Gauss.projectClasses projectionVec param
-				return $
-					(projectedClassificationParam, projectionVec) 
-		classify (label1, label2) (param, projectionVec) input =
-			do
-				let ret = Gauss.classifyProjected (label1,label2)
-					projectionVec param
-					input
-				--liftIO $ putStrLn $ "plotting ..."
-				plotProjected
-					(concat $ ["plots/projectedGauss-", show label1, show label2, ".svg"])
-					trainingProjected
-					(Gauss.classesFromBinary param)
-				return ret
-			where
-				trainingProjected =
-					(#> projectionVec) input
-
-testWithAlg ::
-	Monad m =>
-	(Matrix -> Matrix -> m param)
-	-> ((Label, Label) -> param -> Matrix -> m (VectorOf Label))
-	-> Label -> Label
-	-> (AlgorithmInput, Vector)
-	-> m Double
-testWithAlg
-		calcParam
-		classify
-		label1 label2
-		(AlgorithmInput{..}, inputLabels)
-	=
-	do
-		classificationParam <-
-			calcParam algInput_train1 algInput_train2
-		classified <-
-			classify (label1,label2)
-				classificationParam
-				algInput_input
-		return $
-			calcClassificationQuality
-				(cmap round $ inputLabels) classified
-
-
-readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
-readData fmtOpts path =
-	(fromRows . Vec.toList) <$>
-	(
-		ExceptT $
-		fmap (CSV.decodeWith fmtOpts CSV.NoHeader) $
-		BS.readFile path
-	)
-
+startToClassifyInfoStr l =
+	concat $
+			[ "----------------------------------------------\n"
+			, "classifying to labels ", intercalate "," $ map (show . snd) l
+			, " in files ", intercalate "," $ map (show . fst) l
+			]
 -- (helpers: )
 -----------------------------------------------------------------
 
-calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
-calcClassificationQuality expected res =
-	(/ fromIntegral (size res)) $
-	sum $
-	map (\x -> if x/=0 then 0 else 1) $
-	toList $
-	expected - res
+readTestInput :: [(FilePath,Label)] -> ErrT IO (TestMultiple.AlgorithmInput, Vector)
+readTestInput l
+	=
+	let
+		paths = map fst l
+		labels = map snd l
+	in
+	do
+		trainingSets <- mapM (readData trainingDataFormat) paths
+		(inputLabels, inputData) <-
+			prepareInputData (const True) <$>
+			readData inputDataFormat  "resource/zip.test"
+		return $ (
+			TestMultiple.AlgorithmInput {
+				algInput_train = (trainingSets `zip` labels),
+				algInput_input = inputData
+			}
+			,
+			inputLabels
+			)
 
-readTestInput :: FilePath -> FilePath -> Label -> Label -> ErrT IO (AlgorithmInput, Vector)
-readTestInput
+{-
+readTestInputBinary :: FilePath -> FilePath -> Label -> Label -> ErrT IO (AlgorithmInput, Vector)
+readTestInputBinary
 		trainingFile1 trainingFile2
 		label1 label2
 	=
@@ -213,6 +142,7 @@ readTestInput
 			,
 			inputLabels
 			)
+-}
 
 -- | given the input data as a matrix the rows are filtered by a condition
 prepareInputData :: (Double -> Bool) -> Matrix -> (Vector, Matrix)
@@ -230,43 +160,28 @@ prepareInputData filterRowsBy =
 	.
 	toLists
 
+pathFromLabel :: Label -> FilePath
+pathFromLabel =
+	("resource/train." ++) . show
+
 testParamsFromLabels x y =
 	let
-		[filePath1, filePath2] = map (("resource/train." ++) . show) [x,y]
+		[filePath1, filePath2] = map pathFromLabel [x,y]
 	in
 		(filePath1, filePath2, x, y)
-
-descriptionString
-	set1 set2
-	param 
-	projectionVec projectedClassificationParam
-	inputData classified result
-	=
-	unlines $
-	[ concat $ ["set1 size:", show $ size set1]
-	, concat $ ["set2 size:", show $ size set2]
-	, Gauss.infoStringForParam param
-	, concat $ ["projectionVec size:", show $ size projectionVec]
-	, concat $ ["projected clusters: ----------------------------"]
-	, infoStringForParam_1D projectedClassificationParam
-	, concat $ ["inputData size:", show $ size inputData]
-	, concat $ ["result: --------------------"]
-	, concat $ ["classification quality:", show $ result]
-	]
-
-
-infoStringForParam_1D :: Gauss.ClassificationParam -> String
-infoStringForParam_1D Gauss.ClassificationParam{..} =
-	intercalate "\n" $
-	[ concat $ ["min1:", show $ min1]
-	, concat $ ["min2:", show $ min2 ]
-	, concat $ ["cov1:", show $ covariance1 ]
-	, concat $ ["cov2:", show $ covariance2 ]
-	]
 
 -----------------------------------------------------------------
 -- utils:
 -----------------------------------------------------------------
+
+readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
+readData fmtOpts path =
+	(fromRows . Vec.toList) <$>
+	(
+		ExceptT $
+		fmap (CSV.decodeWith fmtOpts CSV.NoHeader) $
+		BS.readFile path
+	)
 
 instance CSV.FromRecord Vector where
 	parseRecord v =
