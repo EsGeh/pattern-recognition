@@ -13,6 +13,7 @@ import Data.Maybe
 import Data.Traversable( for )
 
 
+-- |represents the whole network
 -- |list of weight-matrix for every layer
 -- |	columns: weights for one perceptron
 type ClassificationParam
@@ -86,10 +87,6 @@ calcClassificationParams_extendedVecs dimensions sets =
 			`zip`
 			dimensions
 		inputDims = Lina.size $ fst $ head sets
-
-pnorm :: Vector -> R
-pnorm x =
-	sqrt $ x <.> x
 
 adjustWeights :: TrainingDataInternal -> ClassificationParam -> ClassificationParam
 adjustWeights trainingData =

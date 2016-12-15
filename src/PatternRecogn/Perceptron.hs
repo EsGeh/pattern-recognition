@@ -42,10 +42,6 @@ calcClassificationParams_extendedVecs set1 set2 =
 					set2
 			)
 
-pnorm :: Vector -> R
-pnorm x =
-	sqrt $ x <.> x
-
 perceptronStepAll set1 set2 param =
 	perceptronStep (-1) set1
 	.	

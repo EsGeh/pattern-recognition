@@ -81,6 +81,10 @@ vecToTuple2 =
 		listToTuple [x,y] = (x,y)
 		listToTuple _ = error "error converting list to tuple"
 
+pnorm :: Vector -> R
+pnorm x =
+	sqrt $ x <.> x
+
 sigmoid x = 1 / (1 + exp (-x))
 sigmoidDerivFromRes x = x * (1 - x)
 {-
