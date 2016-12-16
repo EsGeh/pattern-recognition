@@ -24,6 +24,7 @@ type NetworkDimensions = [Int]
 
 type TrainingData =
 	[(Matrix,Label)]
+
 type TrainingDataInternal =
 	[(Vector,Vector)] -- sample, expected output
 
@@ -82,28 +83,12 @@ trainNetwork dimensions sets =
 	do
 		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initialNetwork)
 		last <$>
-			iterateWhileM 1 cond
+			iterateWhileM 1000 cond
 				(adjustWeights sets)
 				initialNetwork
 	where
 		cond (lastBeta:_) =
-			True
-			{-
-			not $
-			(
-				(<=0.01) $ pnorm . cmap fromIntegral $
-				(\x -> Lina.scalar 1 + x) $
-				classify_extendedInput (-1,1) lastBeta $
-					set1
-			)
-			&&
-			(
-				(<=0.01) $ pnorm . cmap fromIntegral $
-				(\x -> Lina.scalar 1 - x) $
-				classify_extendedInput (-1,1) lastBeta $
-					set2
-			)
-			-}
+			True -- <- TODO!!!
 		initialNetwork =
 			map (Lina.konst 0) $ networkMatrixDimensions inputDims dimensions
 		inputDims =
@@ -114,9 +99,8 @@ adjustWeights ::
 	TrainingDataInternal ->
 	ClassificationParam -> m ClassificationParam
 adjustWeights trainingData =
-	--return
 	foldl (>=>) return $ map adjustWeights_forOneSample $
-		take 1 trainingData
+		trainingData
 
 adjustWeights_forOneSample ::
 	MonadLog m =>
@@ -129,10 +113,12 @@ adjustWeights_forOneSample (input, expectedOutput) weights =
 			derivatives = map (cmap sigmoidDerivFromRes) $ (take (length outputs-1)) outputs
 			(lastOutput:_) = outputs
 			err = lastOutput - expectedOutput
+		{-
 		doLog $ "outputs size: " ++ show (map Lina.size outputs)
 		doLog $ "derivatives size: " ++ show (map Lina.size derivatives)
 		doLog $ "expectedOutput size: " ++ show (Lina.size expectedOutput)
 		doLog $ "err size: " ++ show (Lina.size err)
+		-}
 		res <- backPropagate outputs derivatives err weights
 		--doLog $ "new dimensions: " ++ show (map Lina.size res)
 		return res
@@ -158,11 +144,6 @@ backPropagate
 	) $
 	\weightsOutToIn ->
 	do
-		{-
-		doLog $ "calculate deltas..."
-		doLog $ "derivHead size: " ++ (show $ Lina.size $ head derivatives)
-		doLog $ "err size: " ++ (show $ Lina.size err)
-		-}
 		let
 			removeLastRow = (??(Lina.DropLast 1, Lina.All))
 			-- deltas (from output to input):
@@ -182,7 +163,7 @@ backPropagate
 										(deriv * removeLastRow weight #> delta)
 									in
 										put newDelta >> return newDelta
-		doLog $ "deltas dims: " ++ show (map Lina.size deltas)
+		--doLog $ "deltas dims: " ++ show (map Lina.size deltas)
 		return $
 			reverse $
 			flip map (zip3 weightsOutToIn deltas (drop 1 outputs)) $
