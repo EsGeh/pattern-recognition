@@ -22,13 +22,13 @@ data AlgorithmInput =
 type TrainingData = NN.TrainingData
 
 testNeuronalNetworks ::
-	MonadIO m =>
+	MonadLog m =>
 		NN.NetworkDimensions
 		-> (AlgorithmInput, Vector) -> m Double
 testNeuronalNetworks dims =
 	testWithAlg
 		prettyNeuronalNetwork
-		(return .
+		(
 			NN.calcClassificationParams
 				outputInterpretation
 				dims
@@ -42,7 +42,7 @@ testNeuronalNetworks dims =
 			map (show . Lina.size)
 
 testWithAlg ::
-	MonadIO m =>
+	MonadLog m =>
 	(param -> String)
 	-> (NN.TrainingData -> m param)
 	-> (param -> Matrix -> m (VectorOf Label))
@@ -54,11 +54,11 @@ testWithAlg prettyParam
 		(AlgorithmInput{..}, inputLabels)
 	=
 	do
-		liftIO $ putStrLn $ "training algorithm..."
+		doLog $ "training algorithm..."
 		classificationParam <-
 			calcParam algInput_train
-		liftIO $ putStrLn $ prettyParam classificationParam 
-		liftIO $ putStrLn $ "classifying test data"
+		doLog $ prettyParam classificationParam 
+		doLog $ "classifying test data"
 		classified <-
 			classify
 				classificationParam

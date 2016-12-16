@@ -6,6 +6,7 @@ module PatternRecogn.Types(
 ) where
 
 import PatternRecogn.Lina as Lina
+import Control.Monad.IO.Class
 
 import Foreign.C.Types( CInt )
 

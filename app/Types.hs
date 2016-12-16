@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Types(
 	module Types, 
 	module Control.Monad.Except
@@ -6,4 +7,12 @@ module Types(
 
 import Control.Monad.Except
 
-type ErrT m a = ExceptT String m a
+import PatternRecogn.Types
+
+type ErrT m = ExceptT String m
+
+instance MonadLog IO where
+	doLog = putStrLn
+
+instance (MonadLog m) => MonadLog (ErrT m) where
+	doLog = lift . doLog
