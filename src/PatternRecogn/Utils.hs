@@ -66,7 +66,7 @@ uncurry3 f (a,b,c) = f a b c
 
 setElemAt i x l =
 	take i l
-	++ if i>=0 && i<length l then [x] else []
+	++ (if i>=0 && i<length l then [x] else [])
 	++ drop (i+1) l
 
 vecFromTuple2 :: (Double,Double) -> Vector

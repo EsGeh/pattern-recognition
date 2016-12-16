@@ -35,9 +35,11 @@ data OutputInterpretation =
 
 outputInterpretationMaximum count =
 	OutputInterpretation{
-		outputToLabel = fromIntegral . Lina.maxIndex,
+		outputToLabel =
+			fromIntegral . Lina.maxIndex,
 		labelToOutput =
-			\lbl -> Lina.fromList $ setElemAt (fromIntegral lbl) 1 $ replicate count 0
+			\lbl -> Lina.fromList $
+				setElemAt (fromIntegral lbl) 1 $ replicate count 0
 	}
 
 networkMatrixDimensions :: Int -> [Int] -> [(Int,Int)]
@@ -70,10 +72,7 @@ classify OutputInterpretation{..} param input =
 
 classifySingleSample :: ClassificationParam -> Vector-> Vector
 classifySingleSample weightMatrices input =
-	(
-		foldl (.) id $
-		map feedForward_oneStep weightMatrices
-	) input
+	last $ feedForward weightMatrices input
 
 trainNetwork ::
 	MonadLog m =>
@@ -83,7 +82,7 @@ trainNetwork dimensions sets =
 	do
 		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initialNetwork)
 		last <$>
-			iterateWhileM 1000 cond
+			iterateWhileM 1 cond
 				(adjustWeights sets)
 				initialNetwork
 	where
@@ -115,7 +114,9 @@ adjustWeights ::
 	TrainingDataInternal ->
 	ClassificationParam -> m ClassificationParam
 adjustWeights trainingData =
-		foldl (>=>) return $ map adjustWeights_forOneSample trainingData
+	--return
+	foldl (>=>) return $ map adjustWeights_forOneSample $
+		take 1 trainingData
 
 adjustWeights_forOneSample ::
 	MonadLog m =>
@@ -124,31 +125,48 @@ adjustWeights_forOneSample ::
 adjustWeights_forOneSample (input, expectedOutput) weights =
 	do
 		let
-			outputs = feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
-			derivatives = map sigmoidDerivFromRes outputs
-			lastOutput = fromMaybe input $ listToMaybe outputs
+			outputs = reverse $ feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
+			derivatives = map (cmap sigmoidDerivFromRes) $ (take (length outputs-1)) outputs
+			(lastOutput:_) = outputs
 			err = lastOutput - expectedOutput
-		--doLog $ "outputs: " ++ show (length outputs)
-		let res = backPropagate outputs derivatives err weights
+		doLog $ "outputs size: " ++ show (map Lina.size outputs)
+		doLog $ "derivatives size: " ++ show (map Lina.size derivatives)
+		doLog $ "expectedOutput size: " ++ show (Lina.size expectedOutput)
+		doLog $ "err size: " ++ show (Lina.size err)
+		res <- backPropagate outputs derivatives err weights
 		--doLog $ "new dimensions: " ++ show (map Lina.size res)
 		return res
 
 -- (steps const)
 backPropagate ::
+	MonadLog m =>
 	[Vector] -- outputs
 	-> [Vector] -- derivatives
 	-> Vector -- error
 	-> ClassificationParam
-	-> ClassificationParam
+	-> m ClassificationParam
 backPropagate
 		outputs
 		derivatives
 		err
-		weights
+		--weights
 	=
+	(flip (.)) (
+		reverse
+		-- .
+		-- map (??(Lina.DropLast 1, Lina.All))
+	) $
+	\weightsOutToIn ->
+	do
+		{-
+		doLog $ "calculate deltas..."
+		doLog $ "derivHead size: " ++ (show $ Lina.size $ head derivatives)
+		doLog $ "err size: " ++ (show $ Lina.size err)
+		-}
 		let
-			weightsOutToIn = reverse weights
+			removeLastRow = (??(Lina.DropLast 1, Lina.All))
 			-- deltas (from output to input):
+			deltas :: [Vector]
 			deltas =
 				case derivatives of
 					[] -> []
@@ -160,14 +178,16 @@ backPropagate
 							forM (derivRest `zip` weightsOutToIn) $
 								\(deriv, weight) -> get >>=
 								\delta ->
-									let newDelta = deriv * (weight #> delta)
+									let newDelta =
+										(deriv * removeLastRow weight #> delta)
 									in
 										put newDelta >> return newDelta
-		in
+		doLog $ "deltas dims: " ++ show (map Lina.size deltas)
+		return $
 			reverse $
-			flip map (zip3 weightsOutToIn deltas outputs) $
+			flip map (zip3 weightsOutToIn deltas (drop 1 outputs)) $
 			\(weight, delta, output) ->
-				weight -- ((-1) * delta) `Lina.outer` output
+				weight - Lina.tr (delta `Lina.outer` extendVec output)
 	{-
 		let
 			stageParams =
@@ -213,4 +233,6 @@ feedForward weightMatrices input =
 feedForward_oneStep :: Matrix -> Vector -> Vector
 feedForward_oneStep weights input =
 	Lina.cmap sigmoid $
-	(Lina.fromList $ Lina.toList input ++ [1]) <# weights
+	extendVec input <# weights
+
+extendVec x = Lina.fromList $ Lina.toList x ++ [1]

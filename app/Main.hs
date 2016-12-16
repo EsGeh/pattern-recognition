@@ -41,7 +41,7 @@ main =
 			labels = [3,5,7,8]
 			paths = map pathFromLabel labels
 		testWithData
-			(TestMultiple.testNeuronalNetworks [10])
+			(TestMultiple.testNeuronalNetworks [10,10])
 			(paths `zip` labels)
 		{-
 		forM_ (allPairs [3,5,7,8]) $

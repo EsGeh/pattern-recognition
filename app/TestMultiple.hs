@@ -56,7 +56,7 @@ testWithAlg prettyParam
 	do
 		doLog $ "training algorithm..."
 		classificationParam <-
-			calcParam algInput_train
+			calcParam $ algInput_train
 		doLog $ prettyParam classificationParam 
 		doLog $ "classifying test data"
 		classified <-
@@ -66,7 +66,9 @@ testWithAlg prettyParam
 		return $
 			calcClassificationQuality
 				(cmap round $ inputLabels) classified
-
+		{-
+		return 3
+		-}
 {-
 testPerceptron :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
 testPerceptron =
