@@ -27,21 +27,28 @@ testNeuronalNetworks ::
 		-> (AlgorithmInput, Vector) -> m Double
 testNeuronalNetworks dims =
 	testWithAlg
+		prettyNeuronalNetwork
 		(return .
 			NN.calcClassificationParams
-				(NN.outputInterpretationMaximum 10)
+				outputInterpretation
 				dims
 		)
-		(\param -> return . NN.classify param
+		(\param -> return . NN.classify outputInterpretation param
 		)
+	where
+		outputInterpretation = NN.outputInterpretationMaximum 10
+		prettyNeuronalNetwork =
+			intercalate ", " .
+			map (show . Lina.size)
 
 testWithAlg ::
 	MonadIO m =>
-	(NN.TrainingData -> m param)
+	(param -> String)
+	-> (NN.TrainingData -> m param)
 	-> (param -> Matrix -> m (VectorOf Label))
 	-> (AlgorithmInput, Vector) -- inputData, expected label
 	-> m Double
-testWithAlg
+testWithAlg prettyParam
 		calcParam
 		classify
 		(AlgorithmInput{..}, inputLabels)
@@ -50,6 +57,7 @@ testWithAlg
 		liftIO $ putStrLn $ "training algorithm..."
 		classificationParam <-
 			calcParam algInput_train
+		liftIO $ putStrLn $ prettyParam classificationParam 
 		liftIO $ putStrLn $ "classifying test data"
 		classified <-
 			classify

@@ -10,7 +10,7 @@ import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Writer hiding( (<>) )
 import Data.Maybe
-import Data.Traversable( for )
+import Data.Traversable( for, mapAccumL)
 
 
 -- |represents the whole network
@@ -21,8 +21,10 @@ type ClassificationParam
 
 type NetworkDimensions = [Int]
 
-type TrainingData = [(Matrix,Label)]
-type TrainingDataInternal = [(Vector,Vector)]
+type TrainingData =
+	[(Matrix,Label)]
+type TrainingDataInternal =
+	[(Vector,Vector)] -- sample, expected output
 
 data OutputInterpretation =
 	OutputInterpretation {
@@ -37,31 +39,46 @@ outputInterpretationMaximum count =
 			\lbl -> Lina.fromList $ setElemAt (fromIntegral lbl) 1 $ replicate count 0
 	}
 
+networkMatrixDimensions :: Int -> [Int] -> [(Int,Int)]
+networkMatrixDimensions inputDim dimensions =
+	(map (+1) $ inputDim : dimensions) -- always one more row for the bias value
+	`zip`
+	dimensions
+
 calcClassificationParams :: OutputInterpretation -> NetworkDimensions -> TrainingData -> ClassificationParam
 calcClassificationParams OutputInterpretation{..} dims =
 	trainNetwork dims
 	.
 	join
 	.
-	map (uncurry temp)
-	.
-	map (\(matr, lbl) -> (extendInputData matr, lbl)) -- extend training data
+	map (uncurry toInternal)
 	where
-		temp :: Matrix -> Label -> TrainingDataInternal
-		temp set label =
+		toInternal :: Matrix -> Label -> TrainingDataInternal
+		toInternal set label =
 			Lina.toRows set `zip` repeat (labelToOutput label)
 
-trainNetwork :: NetworkDimensions -> TrainingDataInternal -> ClassificationParam
-trainNetwork dimensions =
-	calcClassificationParams_extendedVecs dimensions
+classify :: OutputInterpretation -> ClassificationParam -> Matrix -> VectorOf Label
+classify OutputInterpretation{..} param input =
+	Lina.fromList $
+	map outputToLabel $
+	map (classifySingleSample param) $
+	Lina.toRows $
+	input
 
-calcClassificationParams_extendedVecs :: NetworkDimensions -> TrainingDataInternal -> ClassificationParam
-calcClassificationParams_extendedVecs dimensions sets =
+classifySingleSample :: ClassificationParam -> Vector-> Vector
+classifySingleSample weightMatrices input =
+	(
+		foldl (.) id $
+		map feedForward_oneStep weightMatrices
+	) input
+
+trainNetwork :: NetworkDimensions -> TrainingDataInternal -> ClassificationParam
+trainNetwork dimensions sets =
 	last $
 	runIdentity $
 	iterateWhileM 1000 cond
 		(return . adjustWeights sets)
-		(map (Lina.konst 0) initDims)
+		(map (Lina.konst 0) $ networkMatrixDimensions inputDims dimensions) -- initial network, all weights 0
 	where
 		cond (lastBeta:_) =
 			True
@@ -81,22 +98,17 @@ calcClassificationParams_extendedVecs dimensions sets =
 					set2
 			)
 			-}
-		initDims :: [(Int,Int)]
-		initDims =
-			(inputDims : dimensions)
-			`zip`
-			dimensions
-		inputDims = Lina.size $ fst $ head sets
+		inputDims =
+			Lina.size $ fst $ head sets
 
 adjustWeights :: TrainingDataInternal -> ClassificationParam -> ClassificationParam
 adjustWeights trainingData =
-	foldl (.) id $
-	map adjustWeights_forOneSample trainingData
+	foldl (.) id $ map adjustWeights_forOneSample trainingData
 
 adjustWeights_forOneSample :: (Vector, Vector) -> ClassificationParam -> ClassificationParam
 adjustWeights_forOneSample (input, expectedOutput) oldWeights =
 	let
-		outputs = feedForward oldWeights input
+		outputs = feedForward oldWeights input :: [Vector] -- output for every stage of the network from (output to input)
 		derivatives = map sigmoidDerivFromRes outputs
 		lastOutput = fromMaybe input $ listToMaybe outputs
 		err = lastOutput - expectedOutput
@@ -111,14 +123,21 @@ backPropagate ::
 	-> ClassificationParam
 	-> ClassificationParam
 backPropagate
-		outputs@(_:outputRest)
-		derivatives@(derivHead:derivRest)
+		outputs
+		derivatives
 		err
 		weights
 	=
-	flip evalState (derivHead * err :: Vector) $
-	forM (zip3 derivRest weights outputRest) $
-		uncurry3 newWeight
+		case (outputs,derivatives) of
+			(_:outputRest, derivHead:derivRest) ->
+				flip evalState (derivHead * err :: Vector) $
+				forM (zip3 derivRest weights outputRest) $
+					uncurry3 newWeight
+			_ ->
+				error $ concat $
+				[ "length outputs: ", show $ length outputs
+				, ", length derivatives:", show $ length derivatives
+				]
 	where
 		newWeight
 			:: Vector -> Matrix -> Vector -> State Vector Matrix
@@ -132,6 +151,14 @@ feedForward ::
 	ClassificationParam -> Vector
 	-> [Vector]
 feedForward weightMatrices =
+{-
+	snd $
+	mapAccumL conc input weightMatrices
+	where
+		conc inp weights =
+			let o = feedForward_oneStep weights inp
+			in (o,o)
+-}
 	getDual . -- reverse list to make it start from output to input
 	execWriter . (
 		foldl (>=>) return $
@@ -139,32 +166,15 @@ feedForward weightMatrices =
 		map feedForward_oneStep weightMatrices
 	)
 
-classify :: ClassificationParam -> Matrix -> VectorOf Label
-classify param =
-	classify_extendedInput param . extendInputData
-
-classify_extendedInput :: ClassificationParam -> Matrix -> VectorOf Label
-classify_extendedInput param input =
-	Lina.fromList $
-	map (toEnum . Lina.maxIndex) $
-	map (classifySingleSample_extended param) $
-	Lina.toRows $
-	input
-
-classifySingleSample_extended :: ClassificationParam -> Vector-> Vector
-classifySingleSample_extended weightMatrices input =
-	(
-		foldl (.) id $
-		map feedForward_oneStep weightMatrices
-	) input
-
 feedForward_oneStep :: Matrix -> Vector -> Vector
 feedForward_oneStep weights input =
 	Lina.cmap sigmoid $
-	input <# weights
+	(Lina.fromList $ Lina.toList input ++ [1]) <# weights
 
+{-
 feedForward_oneStep_withDeriv :: Matrix -> Vector -> (Vector, Vector)
 feedForward_oneStep_withDeriv weights input =
 	let output = feedForward_oneStep weights input
 	in
 		(output, Lina.cmap (\x -> x * (1 - x)) output)
+-}
