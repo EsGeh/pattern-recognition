@@ -34,6 +34,7 @@ data OutputInterpretation =
 		labelToOutput :: Label -> Vector
 	}
 
+-- | 0 <-> (1,0,0,...); 3 <-> (0,0,0,1,0,...)
 outputInterpretationMaximum count =
 	OutputInterpretation{
 		outputToLabel =
@@ -42,12 +43,6 @@ outputInterpretationMaximum count =
 			\lbl -> Lina.fromList $
 				setElemAt (fromIntegral lbl) 1 $ replicate count 0
 	}
-
-networkMatrixDimensions :: Int -> [Int] -> [(Int,Int)]
-networkMatrixDimensions inputDim dimensions =
-	(map (+1) $ inputDim : dimensions) -- always one more row for the bias value
-	`zip`
-	dimensions
 
 calcClassificationParams ::
 	MonadLog m =>
@@ -98,9 +93,9 @@ adjustWeights ::
 	MonadLog m =>
 	TrainingDataInternal ->
 	ClassificationParam -> m ClassificationParam
-adjustWeights trainingData =
-	foldl (>=>) return $ map adjustWeights_forOneSample $
-		trainingData
+adjustWeights =
+	foldl (>=>) return .
+	map adjustWeights_forOneSample
 
 adjustWeights_forOneSample ::
 	MonadLog m =>
@@ -110,7 +105,9 @@ adjustWeights_forOneSample (input, expectedOutput) weights =
 	do
 		let
 			outputs = reverse $ feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
-			derivatives = map (cmap sigmoidDerivFromRes) $ (take (length outputs-1)) outputs
+			derivatives =
+				map (cmap sigmoidDerivFromRes) $
+				(take (length outputs-1)) outputs
 			(lastOutput:_) = outputs
 			err = lastOutput - expectedOutput
 		{-
@@ -137,15 +134,10 @@ backPropagate
 		err
 		--weights
 	=
-	(flip (.)) (
-		reverse
-		-- .
-		-- map (??(Lina.DropLast 1, Lina.All))
-	) $
-	\weightsOutToIn ->
+	(flip (.)) reverse $ -- (before all: reverse weights)
+	\weightsOutToIn -> -- weights from output to input...
 	do
 		let
-			removeLastRow = (??(Lina.DropLast 1, Lina.All))
 			-- deltas (from output to input):
 			deltas :: [Vector]
 			deltas =
@@ -155,41 +147,19 @@ backPropagate
 						let deltaLast = derivHead * err
 						in
 							(deltaLast :) $
-							evalState `flip` deltaLast $
-							forM (derivRest `zip` weightsOutToIn) $
-								\(deriv, weight) -> get >>=
-								\delta ->
-									let newDelta =
-										(deriv * removeLastRow weight #> delta)
-									in
-										put newDelta >> return newDelta
+							snd $
+							mapAccumL conc deltaLast (derivRest `zip` weightsOutToIn)
+							where
+								conc delta (deriv,weight) = twice $
+									deriv * removeLastRow weight #> delta
+								twice a = (a,a)
+			removeLastRow = (??(Lina.DropLast 1, Lina.All))
 		--doLog $ "deltas dims: " ++ show (map Lina.size deltas)
 		return $
 			reverse $
 			flip map (zip3 weightsOutToIn deltas (drop 1 outputs)) $
 			\(weight, delta, output) ->
 				weight - Lina.tr (delta `Lina.outer` extendVec output)
-	{-
-		let
-			stageParams =
-				zip3
-					derivatives
-					(reverse weights)
-					outputs
-		in
-			evalState `flip` (derivHead * err :: Vector) $
-				forM stageParams $
-					uncurry3 newWeight
-	where
-		newWeight
-			:: Vector -> Matrix -> Vector
-			-> State Vector Matrix -- the state is the δ
-		newWeight d w o =
-			get >>= \delta ->
-				do
-					put $ d * (w #> delta)
-					return $ ((-1) * delta) `Lina.outer` o
-		-}
 
 feedForward ::
 	ClassificationParam -> Vector
@@ -202,18 +172,19 @@ feedForward weightMatrices input =
 		conc inp weights =
 			let o = feedForward_oneStep weights inp
 			in (o,o)
-{-
-	getDual . -- reverse list to make it start from output to input
-	execWriter . (
-		foldl (>=>) return $
-		map ((\x -> (tell $ Dual [x]) >> return x) .) $
-		map feedForward_oneStep weightMatrices
-	)
--}
 
 feedForward_oneStep :: Matrix -> Vector -> Vector
 feedForward_oneStep weights input =
 	Lina.cmap sigmoid $
 	extendVec input <# weights
 
+-- helpers
+---------------------------------------------
+
 extendVec x = Lina.fromList $ Lina.toList x ++ [1]
+
+networkMatrixDimensions :: Int -> [Int] -> [(Int,Int)]
+networkMatrixDimensions inputDim dimensions =
+	(map (+1) $ inputDim : dimensions) -- always one more row for the bias value
+	`zip`
+	dimensions
