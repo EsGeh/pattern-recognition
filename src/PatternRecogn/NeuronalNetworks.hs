@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 module PatternRecogn.NeuronalNetworks where
@@ -7,7 +8,7 @@ import PatternRecogn.Types
 import PatternRecogn.Utils
 
 import Control.Monad.Identity
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Control.Monad.Writer hiding( (<>) )
 import Data.Maybe
 import Data.Traversable( for, mapAccumL)
@@ -66,11 +67,14 @@ classify OutputInterpretation{..} param input =
 	Lina.toRows $
 	input
 
+---
+
 classifySingleSample :: ClassificationParam -> Vector-> Vector
 classifySingleSample weightMatrices input =
 	last $ feedForward weightMatrices input
 
 trainNetwork ::
+	forall m .
 	MonadLog m =>
 	NetworkDimensions
 	-> R
@@ -79,16 +83,36 @@ trainNetwork dimensions learnRate sets =
 	do
 		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initialNetwork)
 		head <$>
-			iterateWhileM_ 2 10000 cond
+			iterateWhileM 100000 cond
 				(adjustWeights learnRate sets)
 				initialNetwork
 	where
-		cond (lastBeta:_) =
-			True -- <- TODO!!!
+		--cond :: ClassificationParam -> ClassificationParam -> Bool
+		cond (newWeights:weights:_) =
+			let
+				diffVal :: Double
+				diffVal =
+					sum $
+					map (sum . join . toLists . cmap abs) $
+					zipWith (-) newWeights weights
+			in
+					--doLog $ "diff: " ++ show diffVal
+				(diffVal>0)
+		cond _ = True
 		initialNetwork =
 			map (Lina.konst 0) $ networkMatrixDimensions inputDims dimensions
 		inputDims =
 			Lina.size $ fst $ head sets
+
+{-
+adjustWeights ::
+	MonadLog m =>
+	R
+	-> TrainingDataInternal ->
+	ClassificationParam -> m ClassificationParam
+adjustWeights learnRate trainData =
+	return
+-}
 
 adjustWeights ::
 	MonadLog m =>
@@ -96,7 +120,7 @@ adjustWeights ::
 	-> TrainingDataInternal ->
 	ClassificationParam -> m ClassificationParam
 adjustWeights learnRate =
-	foldl (>=>) return .
+	foldr (<=<) return .
 	map (adjustWeights_forOneSample learnRate)
 
 adjustWeights_forOneSample ::

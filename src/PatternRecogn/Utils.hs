@@ -4,36 +4,66 @@ module PatternRecogn.Utils where
 import PatternRecogn.Types
 import qualified PatternRecogn.Lina as Lina
 
-import Control.Monad.State
+import Control.Monad.State.Strict
 import Data.List
 
 
+-- TODO: force strict evaluation (how is this done?)
+-- This will solve the memory leak in case the cond is non-strict (e.g. cond _ _ = True)
 -- | iterate a function a number of times while a condition is true
 iterateWhileM_ ::
 	forall a m .
 	(Monad m) =>
-	Int
-	-> Int -- max iterations
-	-> ([a] -> Bool) -- condition to continue
+	Int -- max iterations
+	-> (a -> a -> Bool) -- condition to continue
 	-> (a -> m a) -> a -- function and start value
-	-> m [a]
-iterateWhileM_ maxTemp maxIt cond f =
-	flip evalStateT (maxIt, []) .
-	iterateM f'
+	-> m a
+iterateWhileM_ 0 cond f x = return x
+iterateWhileM_ maxIt cond f x =
+	do
+		newVal <- f x
+		let continue = cond newVal x
+		case continue of
+			True -> iterateWhileM_ (maxIt-1) cond f $ newVal
+			False -> return x
+	{-
+	last <$>
+	replicateM maxIt (\x -> if cond x then f x else return x)
+	-}
+	{-
+	foldr (<=<) return $
+	replicate maxIt (\x -> if cond x then f x else return x)
+	-}
+	{-
+	flip evalStateT maxIt
+	.
+	iterateM_ f'
 	where
-		f' :: a -> StateT (Int, [a]) m (Maybe a)
+		f' :: a -> StateT Int m (Maybe a)
 		f' x =
 			do
-				(i, oldVals) <- get
-				let newBuf = take maxTemp $ (x:oldVals)
+				i <- get
+				let newBuf = x
 				if i > 0 && cond newBuf
 					then
 						do
-							put (i-1, newBuf)
+							put $ i-1
 							lift $
 								(Just <$> f x)
 					else
 						return Nothing
+	-}
+
+-- | iterate a monadic function
+iterateM_ ::
+	(Monad m) =>
+	(a -> m (Maybe a)) -> a -> m a
+iterateM_ f x =
+	do
+		maybeNextVal <- f x
+		case maybeNextVal of
+			Nothing -> return x
+			Just nextVal -> iterateM_ f nextVal
 
 -- | iterate a function a number of times while a condition is true
 iterateWhileM ::
