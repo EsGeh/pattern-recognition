@@ -46,9 +46,9 @@ outputInterpretationMaximum count =
 
 calcClassificationParams ::
 	MonadLog m =>
-	OutputInterpretation -> NetworkDimensions -> TrainingData -> m ClassificationParam
-calcClassificationParams OutputInterpretation{..} dims =
-	trainNetwork dims
+	OutputInterpretation -> R -> NetworkDimensions -> TrainingData -> m ClassificationParam
+calcClassificationParams OutputInterpretation{..} learnRate dims =
+	trainNetwork dims learnRate
 	.
 	join
 	.
@@ -73,13 +73,14 @@ classifySingleSample weightMatrices input =
 trainNetwork ::
 	MonadLog m =>
 	NetworkDimensions
+	-> R
 	-> TrainingDataInternal -> m ClassificationParam
-trainNetwork dimensions sets =
+trainNetwork dimensions learnRate sets =
 	do
 		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initialNetwork)
-		last <$>
-			iterateWhileM 1000 cond
-				(adjustWeights sets)
+		head <$>
+			iterateWhileM_ 2 10000 cond
+				(adjustWeights learnRate sets)
 				initialNetwork
 	where
 		cond (lastBeta:_) =
@@ -91,17 +92,19 @@ trainNetwork dimensions sets =
 
 adjustWeights ::
 	MonadLog m =>
-	TrainingDataInternal ->
+	R
+	-> TrainingDataInternal ->
 	ClassificationParam -> m ClassificationParam
-adjustWeights =
+adjustWeights learnRate =
 	foldl (>=>) return .
-	map adjustWeights_forOneSample
+	map (adjustWeights_forOneSample learnRate)
 
 adjustWeights_forOneSample ::
 	MonadLog m =>
-	(Vector, Vector)
+	R
+	-> (Vector, Vector)
 	-> ClassificationParam -> m ClassificationParam
-adjustWeights_forOneSample (input, expectedOutput) weights =
+adjustWeights_forOneSample learnRate (input, expectedOutput) weights =
 	do
 		let
 			outputs = reverse $ feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
@@ -116,19 +119,21 @@ adjustWeights_forOneSample (input, expectedOutput) weights =
 		doLog $ "expectedOutput size: " ++ show (Lina.size expectedOutput)
 		doLog $ "err size: " ++ show (Lina.size err)
 		-}
-		res <- backPropagate outputs derivatives err weights
+		res <- backPropagate learnRate outputs derivatives err weights
 		--doLog $ "new dimensions: " ++ show (map Lina.size res)
 		return res
 
 -- (steps const)
 backPropagate ::
 	MonadLog m =>
-	[Vector] -- outputs
+	R -- learnRate
+	-> [Vector] -- outputs
 	-> [Vector] -- derivatives
 	-> Vector -- error
 	-> ClassificationParam
 	-> m ClassificationParam
 backPropagate
+		learnRate
 		outputs
 		derivatives
 		err
@@ -159,7 +164,7 @@ backPropagate
 			reverse $
 			flip map (zip3 weightsOutToIn deltas (drop 1 outputs)) $
 			\(weight, delta, output) ->
-				weight - Lina.tr (delta `Lina.outer` extendVec output)
+				weight - Lina.tr ((learnRate `Lina.scale` delta) `Lina.outer` extendVec output)
 
 feedForward ::
 	ClassificationParam -> Vector

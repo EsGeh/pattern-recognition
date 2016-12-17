@@ -31,6 +31,7 @@ testNeuronalNetworks dims =
 		(
 			NN.calcClassificationParams
 				outputInterpretation
+				0.1
 				dims
 		)
 		(\param -> return . NN.classify outputInterpretation param

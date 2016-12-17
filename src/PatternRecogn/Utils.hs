@@ -9,6 +9,33 @@ import Data.List
 
 
 -- | iterate a function a number of times while a condition is true
+iterateWhileM_ ::
+	forall a m .
+	(Monad m) =>
+	Int
+	-> Int -- max iterations
+	-> ([a] -> Bool) -- condition to continue
+	-> (a -> m a) -> a -- function and start value
+	-> m [a]
+iterateWhileM_ maxTemp maxIt cond f =
+	flip evalStateT (maxIt, []) .
+	iterateM f'
+	where
+		f' :: a -> StateT (Int, [a]) m (Maybe a)
+		f' x =
+			do
+				(i, oldVals) <- get
+				let newBuf = take maxTemp $ (x:oldVals)
+				if i > 0 && cond newBuf
+					then
+						do
+							put (i-1, newBuf)
+							lift $
+								(Just <$> f x)
+					else
+						return Nothing
+
+-- | iterate a function a number of times while a condition is true
 iterateWhileM ::
 	forall a m .
 	(Monad m) =>
