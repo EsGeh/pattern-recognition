@@ -54,6 +54,7 @@ iterateWhileM_ maxIt cond f x =
 						return Nothing
 	-}
 
+{-
 -- | iterate a monadic function
 iterateM_ ::
 	(Monad m) =>
@@ -87,6 +88,31 @@ iterateWhileM maxIt cond f =
 							put (i-1, x:oldVals)
 							lift $
 								(Just <$> f x)
+					else
+						return Nothing
+-}
+
+iterateWhileM ::
+	forall a m .
+	Monad m =>
+	(Int -> [a] -> Bool)
+	-> (Int -> a -> m a)
+	-> a
+	-> m [a]
+iterateWhileM cond f =
+	flip evalStateT (0, []) .
+	iterateM f'
+	where
+		f' :: a -> StateT (Int, [a]) m (Maybe a)
+		f' x =
+			get >>= \(it, oldVals) ->
+				do
+					let newVals = x : oldVals
+					if cond it newVals
+					then
+						do
+							put (it+1, newVals)
+							lift $ Just <$> f it x
 					else
 						return Nothing
 

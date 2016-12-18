@@ -45,33 +45,34 @@ outputInterpretationMaximum count =
 				setElemAt (fromIntegral lbl) 1 $ replicate count 0
 	}
 
+-- | sums up element wise differences
+paramsDiff newWeights weights =
+	sum $
+	map (sum . join . toLists . cmap abs) $
+	zipWith (-) newWeights weights
+
 calcClassificationParams ::
 	MonadLog m =>
 	OutputInterpretation -> R -> NetworkDimensions -> TrainingData -> m ClassificationParam
-calcClassificationParams OutputInterpretation{..} learnRate dims =
+calcClassificationParams outputInterpretation learnRate dims =
 	trainNetwork dims learnRate
 	.
-	join
-	.
-	map (uncurry toInternal)
-	where
-		toInternal :: Matrix -> Label -> TrainingDataInternal
-		toInternal set label =
-			Lina.toRows set `zip` repeat (labelToOutput label)
+	toInternalTrainingData outputInterpretation
 
 classify :: OutputInterpretation -> ClassificationParam -> Matrix -> VectorOf Label
 classify OutputInterpretation{..} param input =
 	Lina.fromList $
-	map outputToLabel $
-	map (classifySingleSample param) $
+	map (outputToLabel . last) $
+	extendedClassification param input
+
+extendedClassification ::
+	ClassificationParam -> Matrix -> [[Vector]]
+extendedClassification param input =
+	map (feedForward param) $
 	Lina.toRows $
 	input
 
 ---
-
-classifySingleSample :: ClassificationParam -> Vector-> Vector
-classifySingleSample weightMatrices input =
-	last $ feedForward weightMatrices input
 
 trainNetwork ::
 	forall m .
@@ -81,38 +82,24 @@ trainNetwork ::
 	-> TrainingDataInternal -> m ClassificationParam
 trainNetwork dimensions learnRate sets =
 	do
-		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initialNetwork)
+		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initNW)
 		head <$>
-			iterateWhileM 100000 cond
-				(adjustWeights learnRate sets)
-				initialNetwork
+			iterateWhileM cond
+				(const $ adjustWeights learnRate sets)
+				initNW
 	where
 		--cond :: ClassificationParam -> ClassificationParam -> Bool
-		cond (newWeights:weights:_) =
-			let
-				diffVal :: Double
-				diffVal =
-					sum $
-					map (sum . join . toLists . cmap abs) $
-					zipWith (-) newWeights weights
-			in
-					--doLog $ "diff: " ++ show diffVal
-				(diffVal>0)
-		cond _ = True
-		initialNetwork =
-			map (Lina.konst 0) $ networkMatrixDimensions inputDims dimensions
-		inputDims =
+		cond it (newWeights:weights:_) =
+			it < 10000
+			&&
+			paramsDiff newWeights weights >= 0.1
+		cond _ _ = True
+		initNW = initialNetwork inputDim dimensions
+		inputDim =
 			Lina.size $ fst $ head sets
 
-{-
-adjustWeights ::
-	MonadLog m =>
-	R
-	-> TrainingDataInternal ->
-	ClassificationParam -> m ClassificationParam
-adjustWeights learnRate trainData =
-	return
--}
+initialNetwork inputSize dimensions =
+	map (Lina.konst 0) $ networkMatrixDimensions inputSize dimensions
 
 adjustWeights ::
 	MonadLog m =>
@@ -181,7 +168,6 @@ backPropagate
 							where
 								conc delta (deriv,weight) = twice $
 									deriv * removeLastRow weight #> delta
-								twice a = (a,a)
 			removeLastRow = (??(Lina.DropLast 1, Lina.All))
 		--doLog $ "deltas dims: " ++ show (map Lina.size deltas)
 		return $
@@ -189,6 +175,8 @@ backPropagate
 			flip map (zip3 weightsOutToIn deltas (drop 1 outputs)) $
 			\(weight, delta, output) ->
 				weight - Lina.tr ((learnRate `Lina.scale` delta) `Lina.outer` extendVec output)
+
+twice a = (a,a)
 
 feedForward ::
 	ClassificationParam -> Vector
@@ -198,9 +186,7 @@ feedForward weightMatrices input =
 	snd $
 	mapAccumL conc input weightMatrices
 	where
-		conc inp weights =
-			let o = feedForward_oneStep weights inp
-			in (o,o)
+		conc inp weights = twice $ feedForward_oneStep weights inp
 
 feedForward_oneStep :: Matrix -> Vector -> Vector
 feedForward_oneStep weights input =
@@ -209,6 +195,15 @@ feedForward_oneStep weights input =
 
 -- helpers
 ---------------------------------------------
+
+toInternalTrainingData OutputInterpretation{..} =
+	join
+	.
+	map (uncurry toInternal)
+	where
+		toInternal :: Matrix -> Label -> TrainingDataInternal
+		toInternal set label =
+			Lina.toRows set `zip` repeat (labelToOutput label)
 
 extendVec x = Lina.fromList $ Lina.toList x ++ [1]
 

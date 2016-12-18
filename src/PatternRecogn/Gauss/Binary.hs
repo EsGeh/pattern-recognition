@@ -44,7 +44,7 @@ findProjection :: Vector -> ClassificationParam -> Vector
 findProjection startVec params@ClassificationParam{..} =
 	last $
 	runIdentity $
-	iterateWhileM 1000 (const True) (return . itFunc) $
+	iterateWhileM (\i _ -> i < 1000) (const $ return . itFunc) $
 	startVec
 	where
 		itFunc :: Vector -> Vector

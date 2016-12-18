@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 module TestMultiple where
@@ -6,123 +7,85 @@ import Types
 import Plot
 import PatternRecogn.Types
 import PatternRecogn.Lina as Lina
+import PatternRecogn.Utils
 
 import qualified PatternRecogn.NeuronalNetworks as NN
 
 import Control.Monad.Random as Rand
+import Control.Monad.State
 import Data.List( intercalate )
 
 data AlgorithmInput =
 	AlgorithmInput {
 		algInput_train :: TrainingData,
-		algInput_input :: Matrix
+		algInput_input :: (Matrix, VectorOf Label) -- inputData, expected label
 	}
 	deriving( Show )
 
 type TrainingData = NN.TrainingData
 
 testNeuronalNetworks ::
+	forall m .
 	MonadLog m =>
-		NN.NetworkDimensions
-		-> (AlgorithmInput, Vector) -> m Double
-testNeuronalNetworks dims =
-	testWithAlg
-		prettyNeuronalNetwork
-		(
-			NN.calcClassificationParams
-				outputInterpretation
-				1
-				dims
-		)
-		(\param -> return . NN.classify outputInterpretation param
-		)
+	NN.NetworkDimensions
+	-> AlgorithmInput -> m ()
+testNeuronalNetworks dims algInput@AlgorithmInput{ algInput_input = (testData, expectedLabels) } =
+	let
+		learnRate = 1
+	in
+		do
+			_ <- train learnRate $
+				NN.toInternalTrainingData outputInterpretation $
+				algInput_train algInput
+			return ()
 	where
 		outputInterpretation = NN.outputInterpretationMaximum 10
-		prettyNeuronalNetwork =
-			intercalate ", " .
-			map (show . Lina.size)
-
-testWithAlg ::
-	MonadLog m =>
-	(param -> String)
-	-> (NN.TrainingData -> m param)
-	-> (param -> Matrix -> m (VectorOf Label))
-	-> (AlgorithmInput, Vector) -- inputData, expected label
-	-> m Double
-testWithAlg prettyParam
-		calcParam
-		classify
-		(AlgorithmInput{..}, inputLabels)
-	=
-	do
-		doLog $ "training algorithm..."
-		classificationParam <-
-			calcParam $ algInput_train
-		doLog $ prettyParam classificationParam 
-		doLog $ "classifying test data"
-		classified <-
-			classify
-				classificationParam
-				algInput_input
-		return $
-			calcClassificationQuality
-				(cmap round $ inputLabels) classified
-		{-
-		return 3
-		-}
-{-
-testPerceptron :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
-testPerceptron =
-	testWithAlg
-		(\train1 train2 -> return $ Perceptron.calcClassificationParams train1 train2)
-		(\labels param input -> return $ Perceptron.classify labels param input)
-
-testGauss :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
-testGauss =
-	testWithAlg 
-		(\train1 train2 -> return $ Gauss.calcClassificationParams train1 train2)
-		classify
-	where
-		classify labels param input =
-			return $ Gauss.classify labels param input
-
-testLinearRegression :: Monad m => Label -> Label -> (AlgorithmInput, Vector) -> m Double
-testLinearRegression =
-	testWithAlg 
-		(\train1 train2 -> return $ LinearReg.calcClassificationParams train1 train2)
-		(\labels param input -> return $ LinearReg.classify labels param input)
-
-testProjectedGauss :: Label -> Label -> (AlgorithmInput, Vector) -> ErrT IO Double
-testProjectedGauss =
-	testWithAlg 
-		calcParam
-		classify
-	where
-		calcParam train1 train2 =
-			do
-				let param = Gauss.calcClassificationParams train1 train2
-				projectionVec <-
-					Gauss.findProjectionWithRnd param
-				let projectedClassificationParam =
-					Gauss.projectClasses projectionVec param
-				return $
-					(projectedClassificationParam, projectionVec) 
-		classify (label1, label2) (param, projectionVec) input =
-			do
-				let ret = Gauss.classifyProjected (label1,label2)
-					projectionVec param
-					input
-				--liftIO $ putStrLn $ "plotting ..."
-				plotProjected
-					(concat $ ["plots/projectedGauss-", show label1, show label2, ".svg"])
-					trainingProjected
-					(Gauss.classesFromBinary param)
-				return ret
-			where
-				trainingProjected =
-					(#> projectionVec) input
-
--}
+		train :: R -> NN.TrainingDataInternal -> m NN.ClassificationParam
+		train learnRate trainingData =
+			let
+				initNW = NN.initialNetwork inputDim dims
+				inputDim :: Int
+				inputDim = 
+					Lina.size $ fst $ head trainingData
+			in
+				(last <$>) $
+				iterateWhileM
+					cond
+					(updateNW learnRate)
+					initNW
+				where
+					cond it (lastVal:previousVal:_) =
+						NN.paramsDiff lastVal previousVal >= 0.1
+					cond _ _ = True
+					updateNW :: R -> Int -> NN.ClassificationParam -> m NN.ClassificationParam
+					updateNW learnRate it oldNW =
+						do
+							newNW <- NN.adjustWeights learnRate trainingData oldNW :: m NN.ClassificationParam
+							when ((it `mod` 10) == 0) $
+								do
+									doLog $ unlines $
+										[ concat ["iteration: ", show it]
+										]
+									testWithTrainingData newNW
+									testWithInput newNW
+							return $ newNW
+						where
+							testWithTrainingData nw =
+									do
+										let testClasses = NN.classify outputInterpretation nw $ Lina.fromRows $ map fst $ trainingData :: VectorOf Label
+										let quality =
+											calcClassificationQuality
+											(Lina.fromList $ map (NN.outputToLabel outputInterpretation . snd) $ trainingData)
+												testClasses
+										doLog $ concat ["quality of classifying training data: ", show quality]
+							testWithInput nw =
+									do
+										let testClasses = NN.classify outputInterpretation nw $ testData
+										let quality =
+											calcClassificationQuality
+												expectedLabels
+												testClasses
+										doLog $ concat ["quality of classifying input data: ", show quality]
 
 calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
 calcClassificationQuality expected res =

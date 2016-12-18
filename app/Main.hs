@@ -40,9 +40,14 @@ main =
 		let
 			labels = [3,5,7,8]
 			paths = map pathFromLabel labels
+		testInput <- 
+			readTestInput (paths `zip` labels) :: ErrT IO TestMultiple.AlgorithmInput
+		TestMultiple.testNeuronalNetworks [10] testInput
+		{-
 		testWithData
-			(TestMultiple.testNeuronalNetworks [10,10])
+			(TestMultiple.testNeuronalNetworks [10])
 			(paths `zip` labels)
+		-}
 		{-
 		forM_ (allPairs [3,5,7,8]) $
 			(uncurry4 testWithDataBinary . uncurry testParamsFromLabels)
@@ -56,15 +61,17 @@ main =
 					return
 					valOrErr
 
-testWithData :: ((TestMultiple.AlgorithmInput,Vector) -> ErrT IO Double) -> [(FilePath, Label)] -> ErrT IO ()
+{-
+testWithData :: (TestMultiple.AlgorithmInput -> ErrT IO Double) -> [(FilePath, Label)] -> ErrT IO ()
 testWithData testFunc l =
 	do
 		liftIO $ putStrLn $ startToClassifyInfoStr l
 		testInput <-
-			readTestInput l :: ErrT IO (TestMultiple.AlgorithmInput, Vector)
+			readTestInput l :: ErrT IO TestMultiple.AlgorithmInput
 		testFunc testInput
 			>>= \quality -> liftIO $ putStrLn $ concat $ ["quality:", show $ quality]
 		return ()
+-}
 
 {-
 testWithDataBinary :: FilePath -> FilePath -> Label -> Label -> ErrT IO ()
@@ -97,7 +104,7 @@ startToClassifyInfoStr l =
 -- (helpers: )
 -----------------------------------------------------------------
 
-readTestInput :: [(FilePath,Label)] -> ErrT IO (TestMultiple.AlgorithmInput, Vector)
+readTestInput :: [(FilePath,Label)] -> ErrT IO TestMultiple.AlgorithmInput
 readTestInput l
 	=
 	let
@@ -105,18 +112,18 @@ readTestInput l
 		labels = map snd l
 	in
 	do
-		trainingSets <- mapM (readData trainingDataFormat) paths
-		(inputLabels, inputData) <-
-			prepareInputData (const True) <$>
-			readData inputDataFormat  "resource/zip.test"
-		return $ (
+		trainingSets <-
+			mapM (loadMatrixFromFile trainingDataFormat) paths
+		(expectedLabels_raw, inputData) <-
+			prepareInputData (`elem` (map fromIntegral labels)) <$>
+			loadMatrixFromFile inputDataFormat  "resource/zip.test"
+		let expectedLabels =
+			(cmap truncate) expectedLabels_raw
+		return $
 			TestMultiple.AlgorithmInput {
 				algInput_train = (trainingSets `zip` labels),
-				algInput_input = inputData
+				algInput_input = (inputData, expectedLabels)
 			}
-			,
-			inputLabels
-			)
 
 {-
 readTestInputBinary :: FilePath -> FilePath -> Label -> Label -> ErrT IO (AlgorithmInput, Vector)
@@ -126,13 +133,13 @@ readTestInputBinary
 	=
 	do
 		[trainingSet1, trainingSet2] <-
-			mapM (readData trainingDataFormat) $
+			mapM (loadMatrixFromFile trainingDataFormat) $
 			[ trainingFile1
 			, trainingFile2
 			]
 		(inputLabels, inputData) <-
 			prepareInputData (`elem` [fromIntegral label1, fromIntegral label2]) <$>
-			readData inputDataFormat "resource/zip.test"
+			loadMatrixFromFile inputDataFormat "resource/zip.test"
 		return $ (
 			AlgorithmInput {
 				algInput_train1 = trainingSet1,
@@ -174,8 +181,8 @@ testParamsFromLabels x y =
 -- utils:
 -----------------------------------------------------------------
 
-readData :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
-readData fmtOpts path =
+loadMatrixFromFile :: CSV.DecodeOptions -> FilePath -> ErrT IO Matrix
+loadMatrixFromFile fmtOpts path =
 	(fromRows . Vec.toList) <$>
 	(
 		ExceptT $
