@@ -1,3 +1,3 @@
-# measuring quality of 3 different classification algorithms
+# experimental project for testing different machine learning algorithms
 
 see ./doc
