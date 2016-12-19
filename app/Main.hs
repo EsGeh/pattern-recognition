@@ -74,12 +74,12 @@ main =
 		doLog $ "testing with operator \"xor\"..."
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
-				loggingFreq = 0,
-				maxIt = 1000,
-				learnRate = 0.1,
-				stopConds = [Test.StopIfQualityReached 1],
+				loggingFreq = 100,
+				maxIt = 10000,
+				learnRate = 1,
+				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.00001],
 				networkParams = Test.NetworkParams{
-					dims = [2],
+					dims = [3,2],
 					outputInterpretation = (NN.outputInterpretationMaximum 2)
 				}
 			}
@@ -112,7 +112,7 @@ main =
 				learnRate = 1,
 				stopConds = [Test.StopIfConverges 0.01, Test.StopIfQualityReached 1],
 				networkParams = Test.NetworkParams{
-					dims = [10,10],
+					dims = [2,10],
 					outputInterpretation = (NN.outputInterpretationMaximum 10)
 				}
 			}
