@@ -85,14 +85,14 @@ main =
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
-		doLog $ "-------------------------------------------"
-		doLog $ "testing to classify test data (from file)..."
 		let
 			labels = [3,5,7,8]
 			paths = map pathFromLabel labels
+		doLog $ "-------------------------------------------"
+		doLog $ "testing to classify test data (from file)..."
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
-				loggingFreq = 10,
+				loggingFreq = 100,
 				maxIt = 1000,
 				learnRate = 1,
 				stopConds = [Test.StopIfConverges 0.01, Test.StopIfQualityReached 1],
@@ -103,21 +103,21 @@ main =
 			}
 			=<< readTestInput (paths `zip` labels)
 
-		{-
 		doLog $ "-------------------------------------------"
-		doLog $ "testing to classify test data..."
-		let
-			labels = [3,5,7,8]
-			paths = map pathFromLabel labels
-		testInput <- 
-			readTestInput (paths `zip` labels) :: ErrT IO Test.AlgorithmInput
-		-- test neural network:
+		doLog $ "testing to classify test data (from file)..."
 		Test.testNeuronalNetworks
-			10 1000
-			1
-			[10] (NN.outputInterpretationMaximum 10)
-			testInput
-		-}
+			Test.TestFunctionParams{
+				loggingFreq = 100,
+				maxIt = 1000,
+				learnRate = 1,
+				stopConds = [Test.StopIfConverges 0.01, Test.StopIfQualityReached 1],
+				networkParams = Test.NetworkParams{
+					dims = [10,10],
+					outputInterpretation = (NN.outputInterpretationMaximum 10)
+				}
+			}
+			=<< readTestInput (paths `zip` labels)
+
 		{-
 		forM_ (allPairs [3,5,7,8]) $
 			(uncurry4 testWithDataBinary . uncurry testParamsFromLabels)
