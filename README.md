@@ -1,2 +1,3 @@
-# Pattern recognition and machine learning
-## Exercise 2: simple linear regression classification
+# measuring quality of 3 different classification algorithms
+
+see ./doc
