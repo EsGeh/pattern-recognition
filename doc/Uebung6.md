@@ -51,10 +51,30 @@ Im Fall der Ziffern wird die Qualität sowohl für die Trainingsdaten als auch d
 
 ### Ergebnis
 
+Aus der Ausgabe des Programms (s.u.) wird Folgendes sichtbar:
+
+* Die logischen Operationen "UND" und "ODER" werden sehr schnell erfolgreich gelern
+* Die Testdaten werden mittels eines einfachen Netzes relativ schnell bis zu einer Erfolgsrate von ~0.98 (Trainingsdaten) gelernt. Der erlernte Klassifikator klassifiziert die Testdatenmenge sehr erfolgreich mit einer Erfolgsrate von ~0.9
+
+Allgemeine Beobachtungen:
+
+* Beim Lernen kann die Erfolgsrate durchaus vorübergehend wieder fallen
+* Beim Lernen mit mehr als 1 Zwischenschicht verlangsamt sich der Lern-Prozess drastisch
+
+#### Ausgabe des Programms
+
+Erklärung der Ausgabe:
+
+* "network dimensions [i,j,...]" bezeichnet ein Netzwerk, das außer der Eingabeschickt weitere Schichten mit der Knotenanzahl i,j,... aufweist.
+* Ein Lernvorgang bricht ab (z.B. "stopped after ... iterations. Reason: ...", wenn
+
+	* nach einer maximalen Anzahl von Iterationen
+	* falls die Erfolgsrate 1 beträgt
+	* falls kein nennenswerter Fortschritt mehr gemacht wird
+
 Dies ist die Ausgabe des Programms:
 
 	$ ./scripts/run.sh
-
 	-------------------------------------------
 	testing with operator "and"...
 	network dimensions: [2]
@@ -127,16 +147,43 @@ Dies ist die Ausgabe des Programms:
 					Reason: iterations >=1000
 	quality of classifying training data: 0.9816743023740109
 	quality of classifying test data: 0.9076682316118936
-
-Hier wird folgendes sichtbar:
-
-* Die logischen Operationen "UND" und "ODER" werden sehr schnell erfolgreich gelern
-* Die Testdaten werden mittels eines einfachen Netzes relativ schnell bis zu einer Erfolgsrate von ~0.98 (Trainingsdaten) gelernt. Der erlernte Klassifikator klassifiziert die Testdatenmenge sehr erfolgreich mit einer Erfolgsrate von ~0.9
-
-Allgemeine Beobachtungen:
-
-* Beim Lernen kann die Erfolgsrate durchaus vorübergehend wieder fallen
-* Beim Lernen mit mehr als 1 Zwischenschicht verlangsamt sich der Lern-Prozess drastisch
+	-------------------------------------------
+	testing to classify test data (from file)...
+	network dimensions: [2,10]
+	iteration: 0
+	quality of classifying training data: 0.0
+	quality of classifying test data: 0.0
+	iteration: 100
+	quality of classifying training data: 0.27405247813411077
+	quality of classifying test data: 0.2597809076682316
+	iteration: 200
+	quality of classifying training data: 0.4868804664723032
+	quality of classifying test data: 0.4616588419405321
+	iteration: 300
+	quality of classifying training data: 0.48854643898375677
+	quality of classifying test data: 0.4460093896713615
+	iteration: 400
+	quality of classifying training data: 0.4947938359017076
+	quality of classifying test data: 0.45539906103286387
+	iteration: 500
+	quality of classifying training data: 0.4947938359017076
+	quality of classifying test data: 0.4538341158059468
+	iteration: 600
+	quality of classifying training data: 0.48771345272802996
+	quality of classifying test data: 0.4507042253521127
+	iteration: 700
+	quality of classifying training data: 0.49604331528529777
+	quality of classifying test data: 0.4522691705790297
+	iteration: 800
+	quality of classifying training data: 0.49604331528529777
+	quality of classifying test data: 0.4538341158059468
+	iteration: 900
+	quality of classifying training data: 0.49604331528529777
+	quality of classifying test data: 0.4538341158059468
+	stopped after 985 iterations.
+					Reason: progress < 1.0e-2
+	quality of classifying training data: 0.49604331528529777
+	quality of classifying test data: 0.4538341158059468
 
 ## Kompilieren des Programms
 
