@@ -6,9 +6,10 @@ module Main where
 
 import Plot
 import Types
-import qualified TestMultiple as TestMultiple
+import qualified TestMultiple as Test
 
 import qualified PatternRecogn.NeuronalNetworks as NN
+import PatternRecogn.Utils
 import PatternRecogn.Types
 
 import PatternRecogn.Lina as Lina
@@ -17,6 +18,7 @@ import qualified Data.Csv as CSV
 import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
+import Control.Applicative
 import Control.Monad.Random as Rand
 import Data.List( intercalate )
 
@@ -37,16 +39,84 @@ main :: IO ()
 main =
 	handleErrors $
 	do
+
+		doLog $ "-------------------------------------------"
+		doLog $ "testing with operator \"and\"..."
+		Test.testNeuronalNetworks
+			Test.TestFunctionParams{
+				loggingFreq = 0,
+				maxIt = 1000,
+				learnRate = 0.1,
+				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.001],
+				networkParams = Test.NetworkParams{
+					dims = [2],
+					outputInterpretation = (NN.outputInterpretationMaximum 2)
+				}
+			}
+			(logicalOp_testInput (&&))
+
+		doLog $ "-------------------------------------------"
+		doLog $ "testing with operator \"or\"..."
+		Test.testNeuronalNetworks
+			Test.TestFunctionParams{
+				loggingFreq = 0,
+				maxIt = 1000,
+				learnRate = 0.1,
+				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.001],
+				networkParams = Test.NetworkParams{
+					dims = [2],
+					outputInterpretation = (NN.outputInterpretationMaximum 2)
+				}
+			}
+			(logicalOp_testInput (||))
+
+		doLog $ "-------------------------------------------"
+		doLog $ "testing with operator \"xor\"..."
+		Test.testNeuronalNetworks
+			Test.TestFunctionParams{
+				loggingFreq = 0,
+				maxIt = 1000,
+				learnRate = 0.1,
+				stopConds = [Test.StopIfQualityReached 1],
+				networkParams = Test.NetworkParams{
+					dims = [2],
+					outputInterpretation = (NN.outputInterpretationMaximum 2)
+				}
+			}
+			(logicalOp_testInput (\x y -> x && not y || y && not x))
+
+		doLog $ "-------------------------------------------"
+		doLog $ "testing to classify test data (from file)..."
+		let
+			labels = [3,5,7,8]
+			paths = map pathFromLabel labels
+		Test.testNeuronalNetworks
+			Test.TestFunctionParams{
+				loggingFreq = 10,
+				maxIt = 1000,
+				learnRate = 1,
+				stopConds = [Test.StopIfConverges 0.01, Test.StopIfQualityReached 1],
+				networkParams = Test.NetworkParams{
+					dims = [10],
+					outputInterpretation = (NN.outputInterpretationMaximum 10)
+				}
+			}
+			=<< readTestInput (paths `zip` labels)
+
+		{-
+		doLog $ "-------------------------------------------"
+		doLog $ "testing to classify test data..."
 		let
 			labels = [3,5,7,8]
 			paths = map pathFromLabel labels
 		testInput <- 
-			readTestInput (paths `zip` labels) :: ErrT IO TestMultiple.AlgorithmInput
-		TestMultiple.testNeuronalNetworks [10] testInput
-		{-
-		testWithData
-			(TestMultiple.testNeuronalNetworks [10])
-			(paths `zip` labels)
+			readTestInput (paths `zip` labels) :: ErrT IO Test.AlgorithmInput
+		-- test neural network:
+		Test.testNeuronalNetworks
+			10 1000
+			1
+			[10] (NN.outputInterpretationMaximum 10)
+			testInput
 		-}
 		{-
 		forM_ (allPairs [3,5,7,8]) $
@@ -62,12 +132,12 @@ main =
 					valOrErr
 
 {-
-testWithData :: (TestMultiple.AlgorithmInput -> ErrT IO Double) -> [(FilePath, Label)] -> ErrT IO ()
+testWithData :: (Test.AlgorithmInput -> ErrT IO Double) -> [(FilePath, Label)] -> ErrT IO ()
 testWithData testFunc l =
 	do
 		liftIO $ putStrLn $ startToClassifyInfoStr l
 		testInput <-
-			readTestInput l :: ErrT IO TestMultiple.AlgorithmInput
+			readTestInput l :: ErrT IO Test.AlgorithmInput
 		testFunc testInput
 			>>= \quality -> liftIO $ putStrLn $ concat $ ["quality:", show $ quality]
 		return ()
@@ -104,9 +174,39 @@ startToClassifyInfoStr l =
 -- (helpers: )
 -----------------------------------------------------------------
 
-readTestInput :: [(FilePath,Label)] -> ErrT IO TestMultiple.AlgorithmInput
-readTestInput l
-	=
+logicalOp_testInput :: (Bool -> Bool -> Bool) -> Test.AlgorithmInput
+logicalOp_testInput op =
+	let
+		inputData :: Num a => [(a,a)]
+		inputData = liftA2 (,) [0,1] [0,1]
+		expectedOutput :: [Int]
+		expectedOutput = uncurry (boolOpToIntOp op) <$> inputData
+	in
+		Test.AlgorithmInput {
+			algInput_train = 
+				map toTrainingData $
+				partitionBy snd $
+				inputData `zip` expectedOutput
+			, algInput_input = Nothing
+		}
+
+toTrainingData :: [((Int,Int),Int)] -> (Matrix,Label)
+toTrainingData l =
+	let
+		label = snd $ head l
+	in
+		(,fromIntegral label) $
+		Lina.fromLists $
+		map (map fromIntegral) $
+		map ((\(x,y) -> [x,y]) . fst) l
+
+boolOpToIntOp op x y=
+	case op (x>0) (y>0) of
+		True -> 1
+		_ -> 0
+
+readTestInput :: [(FilePath,Label)] -> ErrT IO Test.AlgorithmInput
+readTestInput l =
 	let
 		paths = map fst l
 		labels = map snd l
@@ -120,9 +220,9 @@ readTestInput l
 		let expectedLabels =
 			(cmap truncate) expectedLabels_raw
 		return $
-			TestMultiple.AlgorithmInput {
+			Test.AlgorithmInput {
 				algInput_train = (trainingSets `zip` labels),
-				algInput_input = (inputData, expectedLabels)
+				algInput_input = Just (inputData, expectedLabels)
 			}
 
 {-

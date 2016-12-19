@@ -14,78 +14,137 @@ import qualified PatternRecogn.NeuronalNetworks as NN
 import Control.Monad.Random as Rand
 import Control.Monad.State
 import Data.List( intercalate )
+import Data.Maybe
 
 data AlgorithmInput =
 	AlgorithmInput {
 		algInput_train :: TrainingData,
-		algInput_input :: (Matrix, VectorOf Label) -- inputData, expected label
+		algInput_input :: Maybe (Matrix, VectorOf Label) -- inputData, expected label
 	}
 	deriving( Show )
 
 type TrainingData = NN.TrainingData
 
+data TestFunctionParams
+	= TestFunctionParams {
+		loggingFreq :: Int,
+		maxIt :: Int,
+		learnRate :: R,
+		stopConds :: [StopCond],
+		networkParams :: NetworkParams
+	}
+
+data StopCond
+	= StopIfConverges R
+	| StopIfQualityReached R
+
+data StopReason
+	= StopReason_MaxIt Int
+	| StopReason_Converged R
+	| StopReason_QualityReached R
+
+data NetworkParams
+	= NetworkParams {
+		dims :: NN.NetworkDimensions,
+		outputInterpretation :: NN.OutputInterpretation
+	}
+
 testNeuronalNetworks ::
 	forall m .
 	MonadLog m =>
-	NN.NetworkDimensions
+	TestFunctionParams
 	-> AlgorithmInput -> m ()
-testNeuronalNetworks dims algInput@AlgorithmInput{ algInput_input = (testData, expectedLabels) } =
-	let
-		learnRate = 1
-	in
-		do
-			_ <- train learnRate $
-				NN.toInternalTrainingData outputInterpretation $
-				algInput_train algInput
-			return ()
+testNeuronalNetworks
+		TestFunctionParams{networkParams = NetworkParams{..}, ..}
+		algInput@AlgorithmInput{ algInput_input = mTestData }
+	=
+	testNeuronalNetworks' $ 
+			NN.toInternalTrainingData outputInterpretation $
+			algInput_train algInput
 	where
-		outputInterpretation = NN.outputInterpretationMaximum 10
-		train :: R -> NN.TrainingDataInternal -> m NN.ClassificationParam
-		train learnRate trainingData =
-			let
+		testNeuronalNetworks' :: NN.TrainingDataInternal -> m ()
+		testNeuronalNetworks' trainingData =
+			do
+				doLog $ "network dimensions: " ++ show dims
+				(nw,stopReason) <- train
+				case stopReason of
+					StopReason_MaxIt it -> doLog $ "max iterations reached " ++ show it
+					StopReason_Converged minProgress -> doLog $ "stopped: progress < " ++ show minProgress
+					StopReason_QualityReached quality -> doLog $ "stopped: quality >= " ++ show quality
+				_ <- showNWInfo =<<
+					(NN.adjustWeights learnRate trainingData $ last nw)
+				return ()
+			where
+				train :: m ([NN.ClassificationParam],StopReason)
+				train =
+					--(last <$>) $
+					iterateWhileM_ext
+						cond
+						updateNW
+						initNW
 				initNW = NN.initialNetwork inputDim dims
 				inputDim :: Int
-				inputDim = 
-					Lina.size $ fst $ head trainingData
-			in
-				(last <$>) $
-				iterateWhileM
-					cond
-					(updateNW learnRate)
-					initNW
-				where
-					cond it (lastVal:previousVal:_) =
-						NN.paramsDiff lastVal previousVal >= 0.1
-					cond _ _ = True
-					updateNW :: R -> Int -> NN.ClassificationParam -> m NN.ClassificationParam
-					updateNW learnRate it oldNW =
-						do
-							newNW <- NN.adjustWeights learnRate trainingData oldNW :: m NN.ClassificationParam
-							when ((it `mod` 10) == 0) $
-								do
-									doLog $ unlines $
-										[ concat ["iteration: ", show it]
-										]
-									testWithTrainingData newNW
-									testWithInput newNW
-							return $ newNW
-						where
-							testWithTrainingData nw =
-									do
-										let testClasses = NN.classify outputInterpretation nw $ Lina.fromRows $ map fst $ trainingData :: VectorOf Label
-										let quality =
-											calcClassificationQuality
-											(Lina.fromList $ map (NN.outputToLabel outputInterpretation . snd) $ trainingData)
-												testClasses
-										doLog $ concat ["quality of classifying training data: ", show quality]
-							testWithInput nw =
-									do
-										let testClasses = NN.classify outputInterpretation nw $ testData
-										let quality =
-											calcClassificationQuality
-												expectedLabels
-												testClasses
-										doLog $ concat ["quality of classifying input data: ", show quality]
+				inputDim = Lina.size $ fst $ head trainingData
+				cond :: Int -> [NN.ClassificationParam] -> m (Maybe StopReason)
+				cond it (lastVal:previousVal:_) =
+					if not $ it < maxIt
+					then
+						return $ Just $ StopReason_MaxIt it
+					else
+						fmap (
+							listToMaybe .
+							catMaybes
+						) $
+						temp
+					where
+						temp :: m [Maybe StopReason]
+						temp =
+							mapM `flip` stopConds $ \stopCond ->
+								case stopCond of
+									StopIfConverges delta ->
+										if (NN.paramsDiff lastVal previousVal <= delta)
+										then
+											return $ return $ StopReason_Converged delta
+										else return Nothing
+									StopIfQualityReached quality ->
+										if (testWithTrainingData lastVal >= quality)
+										then
+											do
+												--doLog $ "cond quali: " ++ show (testWithTrainingData lastVal)
+												return $ return $ StopReason_QualityReached quality
+										else return $ Nothing
+				cond _ _ = return $ Nothing
+				updateNW :: Int -> NN.ClassificationParam -> m NN.ClassificationParam
+				updateNW it network =
+					do
+						when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
+							do
+								doLog $ concat ["iteration: ", show it]
+								showNWInfo network
+						ret <- NN.adjustWeights learnRate trainingData network
+						return ret
+				showNWInfo network =
+					do
+						let qualityTraining = testWithTrainingData network
+						doLog $ concat ["quality of classifying training data: ", show qualityTraining]
+						maybe (return ()) `flip` mTestData $ \(testData, expectedLabels) ->
+							let qualityTestData =
+								testNW network
+									testData
+									expectedLabels
+							in
+								doLog $ concat ["quality of classifying test data: ", show qualityTestData]
+				testWithTrainingData nw =
+					testNW nw
+						(Lina.fromRows $ map fst $ trainingData)
+						(Lina.fromList $ map (NN.outputToLabel outputInterpretation . snd) $ trainingData)
+				testNW nw inputData expectedLabels =
+					let
+						testClasses = NN.classify outputInterpretation nw $ inputData
+					in
+						calcClassificationQuality
+							expectedLabels
+									testClasses
 
 calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
 calcClassificationQuality expected res =

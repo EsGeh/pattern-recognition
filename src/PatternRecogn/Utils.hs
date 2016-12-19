@@ -7,126 +7,59 @@ import qualified PatternRecogn.Lina as Lina
 import Control.Monad.State.Strict
 import Data.List
 
-
--- TODO: force strict evaluation (how is this done?)
--- This will solve the memory leak in case the cond is non-strict (e.g. cond _ _ = True)
--- | iterate a function a number of times while a condition is true
-iterateWhileM_ ::
-	forall a m .
-	(Monad m) =>
-	Int -- max iterations
-	-> (a -> a -> Bool) -- condition to continue
-	-> (a -> m a) -> a -- function and start value
-	-> m a
-iterateWhileM_ 0 cond f x = return x
-iterateWhileM_ maxIt cond f x =
-	do
-		newVal <- f x
-		let continue = cond newVal x
-		case continue of
-			True -> iterateWhileM_ (maxIt-1) cond f $ newVal
-			False -> return x
-	{-
-	last <$>
-	replicateM maxIt (\x -> if cond x then f x else return x)
-	-}
-	{-
-	foldr (<=<) return $
-	replicate maxIt (\x -> if cond x then f x else return x)
-	-}
-	{-
-	flip evalStateT maxIt
-	.
-	iterateM_ f'
+iterateWhileM cond f start =
+	fst <$>
+	iterateWhileM_ext cond' f start
 	where
-		f' :: a -> StateT Int m (Maybe a)
-		f' x =
-			do
-				i <- get
-				let newBuf = x
-				if i > 0 && cond newBuf
-					then
-						do
-							put $ i-1
-							lift $
-								(Just <$> f x)
-					else
-						return Nothing
-	-}
+		cond' it vals = return $
+			if cond it vals
+			then Nothing
+			else Just ()
 
-{-
--- | iterate a monadic function
-iterateM_ ::
-	(Monad m) =>
-	(a -> m (Maybe a)) -> a -> m a
-iterateM_ f x =
-	do
-		maybeNextVal <- f x
-		case maybeNextVal of
-			Nothing -> return x
-			Just nextVal -> iterateM_ f nextVal
-
--- | iterate a function a number of times while a condition is true
-iterateWhileM ::
-	forall a m .
-	(Monad m) =>
-	Int -- max iterations
-	-> ([a] -> Bool) -- condition to continue
-	-> (a -> m a) -> a -- function and start value
-	-> m [a]
-iterateWhileM maxIt cond f =
-	flip evalStateT (maxIt, []) .
-	iterateM f'
-	where
-		f' :: a -> StateT (Int, [a]) m (Maybe a)
-		f' x =
-			do
-				(i, oldVals) <- get
-				if i > 0 && cond (x:oldVals)
-					then
-						do
-							put (i-1, x:oldVals)
-							lift $
-								(Just <$> f x)
-					else
-						return Nothing
--}
-
-iterateWhileM ::
-	forall a m .
+iterateWhileM_ext ::
+	forall a m stopInfo .
 	Monad m =>
-	(Int -> [a] -> Bool)
+	(Int -> [a] -> m (Maybe stopInfo))
 	-> (Int -> a -> m a)
 	-> a
-	-> m [a]
-iterateWhileM cond f =
-	flip evalStateT (0, []) .
-	iterateM f'
+	-> m ([a], stopInfo)
+iterateWhileM_ext cond f x =
+	flip evalStateT (0, [x]) $
+	iterateM f' x
 	where
-		f' :: a -> StateT (Int, [a]) m (Maybe a)
+		f' :: a -> StateT (Int, [a]) m (Either stopInfo a)
 		f' x =
 			get >>= \(it, oldVals) ->
 				do
-					let newVals = x : oldVals
-					if cond it newVals
-					then
-						do
-							put (it+1, newVals)
-							lift $ Just <$> f it x
-					else
-						return Nothing
+					continue <- lift $ cond it oldVals
+					case continue of
+						Nothing ->
+							do
+								newVal <- lift $ f it x
+								put (it+1, newVal: oldVals)
+								return $ Right $ newVal
+						Just stopInfo ->
+							return $ Left stopInfo
 
 -- | iterate a monadic function
 iterateM ::
 	(Monad m) =>
-	(a -> m (Maybe a)) -> a -> m [a]
+	(a -> m (Either stopInfo a)) -> a -> m ([a], stopInfo)
 iterateM f x =
 	do
 		maybeNextVal <- f x
+		case maybeNextVal of
+			Left stopInfo -> return ([], stopInfo)
+			Right nextVal ->
+				do
+					(restRet, stopInfo) <- iterateM f nextVal
+					return (x: restRet, stopInfo)
+		{-
 		fmap (x :) $
 			case maybeNextVal of
 				Nothing -> return []
 				Just nextVal -> iterateM f nextVal
+		-}
 
 -- | sort list elements into buckets based on a property:
 partitionBy :: (Eq b, Ord b) => (a -> b) -> [a] -> [[a]]
