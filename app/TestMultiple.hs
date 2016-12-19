@@ -40,8 +40,8 @@ data StopCond
 
 data StopReason
 	= StopReason_MaxIt Int
-	| StopReason_Converged R
-	| StopReason_QualityReached R
+	| StopReason_Converged R Int
+	| StopReason_QualityReached R Int
 
 data NetworkParams
 	= NetworkParams {
@@ -68,9 +68,18 @@ testNeuronalNetworks
 				doLog $ "network dimensions: " ++ show dims
 				(nw,stopReason) <- train
 				case stopReason of
-					StopReason_MaxIt it -> doLog $ "max iterations reached " ++ show it
-					StopReason_Converged minProgress -> doLog $ "stopped: progress < " ++ show minProgress
-					StopReason_QualityReached quality -> doLog $ "stopped: quality >= " ++ show quality
+					StopReason_MaxIt it ->
+						doLog $ "stopped. \n\tReason: iterations >=" ++ show it
+					StopReason_Converged minProgress it ->
+						doLog $ intercalate "\n" $
+						[ concat [ "stopped after ", show it, " iterations."]
+						, concat [ "\tReason: progress < ", show minProgress]
+						]
+					StopReason_QualityReached quality it ->
+						doLog $ intercalate "\n" $
+						[ concat [ "stopped after ", show it, " iterations."]
+						, concat [ "\tReason: quality >= ", show quality]
+						]
 				_ <- showNWInfo =<<
 					(NN.adjustWeights learnRate trainingData $ last nw)
 				return ()
@@ -104,14 +113,14 @@ testNeuronalNetworks
 									StopIfConverges delta ->
 										if (NN.paramsDiff lastVal previousVal <= delta)
 										then
-											return $ return $ StopReason_Converged delta
+											return $ return $ StopReason_Converged delta it
 										else return Nothing
 									StopIfQualityReached quality ->
 										if (testWithTrainingData lastVal >= quality)
 										then
 											do
 												--doLog $ "cond quali: " ++ show (testWithTrainingData lastVal)
-												return $ return $ StopReason_QualityReached quality
+												return $ return $ StopReason_QualityReached quality it
 										else return $ Nothing
 				cond _ _ = return $ Nothing
 				updateNW :: Int -> NN.ClassificationParam -> m NN.ClassificationParam
