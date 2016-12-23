@@ -20,13 +20,12 @@ calcClassificationParams set1 set2 =
 
 calcClassificationParams_extendedVecs :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams_extendedVecs set1 set2 =
-	last $
 	runIdentity $
-	iterateWhileM cond
-		(const $ return . perceptronStepAll set1 set2)
+	iterateWhileM_withCtxt 0 cond
+		(return . perceptronStepAll set1 set2)
 		(Lina.konst 0 $ Lina.cols set1)
 	where
-		cond it (lastBeta:_) =
+		cond lastBeta = return $
 			not $
 			(
 				(<=0.01) $ pnorm . cmap fromIntegral $

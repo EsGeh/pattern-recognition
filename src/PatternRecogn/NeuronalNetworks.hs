@@ -83,17 +83,16 @@ trainNetwork ::
 trainNetwork dimensions learnRate sets =
 	do
 		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initNW)
-		head <$>
-			iterateWhileM cond
-				(const $ adjustWeights learnRate sets)
-				initNW
+		iterateWhileM_withCtxt 1 cond
+			(lift . adjustWeights learnRate sets)
+			initNW
 	where
-		--cond :: ClassificationParam -> ClassificationParam -> Bool
-		cond it (newWeights:weights:_) =
+		cond weights = withIterationCtxt $ \it (prevWeights:_) ->
+			return $
 			it < 10000
 			&&
-			paramsDiff newWeights weights >= 0.1
-		cond _ _ = True
+			paramsDiff weights prevWeights >= 0.1
+		cond _ = return $ True
 		initNW = initialNetwork inputDim dimensions
 		inputDim =
 			Lina.size $ fst $ head sets

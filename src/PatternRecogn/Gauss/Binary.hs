@@ -42,9 +42,8 @@ classifyProjected labels projectionVec params =
 
 findProjection :: Vector -> ClassificationParam -> Vector
 findProjection startVec params@ClassificationParam{..} =
-	last $
 	runIdentity $
-	iterateWhileM (\i _ -> i < 1000) (const $ return . itFunc) $
+	iterateWhileM_withCtxt 0 (\_ -> askIt >>= \i -> return $ i < 1000) (return . itFunc) $
 	startVec
 	where
 		itFunc :: Vector -> Vector

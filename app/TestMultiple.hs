@@ -66,7 +66,7 @@ testNeuronalNetworks
 		testNeuronalNetworks' trainingData =
 			do
 				doLog $ "network dimensions: " ++ show dims
-				(nw,stopReason) <- train
+				(nw,stopReason) <- trainNetwork
 				case stopReason of
 					StopReason_MaxIt it ->
 						doLog $ "stopped. \n\tReason: iterations >=" ++ show it
@@ -80,58 +80,76 @@ testNeuronalNetworks
 						[ concat [ "stopped after ", show it, " iterations."]
 						, concat [ "\tReason: quality >= ", show quality]
 						]
-				_ <- showNWInfo =<<
-					(NN.adjustWeights learnRate trainingData $ last nw)
 				return ()
 			where
-				train :: m ([NN.ClassificationParam],StopReason)
-				train =
-					--(last <$>) $
-					iterateWhileM_ext
-						cond
-						updateNW
+				trainNetwork :: m (NN.ClassificationParam, StopReason)
+				trainNetwork =
+					iterateWithCtxtM 1
+						(updateNW cond)
 						initNW
 				initNW = NN.initialNetwork inputDim dims
 				inputDim :: Int
 				inputDim = Lina.size $ fst $ head trainingData
-				cond :: Int -> [NN.ClassificationParam] -> m (Maybe StopReason)
-				cond it (lastVal:previousVal:_) =
-					if not $ it < maxIt
-					then
-						return $ Just $ StopReason_MaxIt it
-					else
-						fmap (
-							listToMaybe .
-							catMaybes
-						) $
-						temp
-					where
-						temp :: m [Maybe StopReason]
-						temp =
-							mapM `flip` stopConds $ \stopCond ->
-								case stopCond of
-									StopIfConverges delta ->
-										if (NN.paramsDiff lastVal previousVal <= delta)
-										then
-											return $ return $ StopReason_Converged delta it
-										else return Nothing
-									StopIfQualityReached quality ->
-										if (testWithTrainingData lastVal >= quality)
-										then
-											do
-												--doLog $ "cond quali: " ++ show (testWithTrainingData lastVal)
-												return $ return $ StopReason_QualityReached quality it
-										else return $ Nothing
-				cond _ _ = return $ Nothing
-				updateNW :: Int -> NN.ClassificationParam -> m NN.ClassificationParam
-				updateNW it network =
+
+				updateNW :: 
+					(NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m (Maybe StopReason))
+					-> NN.ClassificationParam
+					-> IterationMonadT [NN.ClassificationParam] m (Either (NN.ClassificationParam, StopReason) NN.ClassificationParam)
+				updateNW cond network =
 					do
-						when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
+					continue <- cond network
+					case continue of
+						Nothing ->
 							do
-								doLog $ concat ["iteration: ", show it]
-								showNWInfo network
-						ret <- NN.adjustWeights learnRate trainingData network
-						return ret
+								ret <- updateNW' network
+								return $ Right ret
+						Just stop -> return $ Left (network, stop)
+					where
+						updateNW' :: 
+							NN.ClassificationParam
+							-> IterationMonadT [NN.ClassificationParam] m NN.ClassificationParam
+						updateNW' network =
+							withIterationCtxt $ \it _ ->
+								do
+									when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
+										do
+											doLog $ concat ["iteration: ", show it]
+											showNWInfo network
+									NN.adjustWeights learnRate trainingData network
+
+				cond :: NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m (Maybe StopReason)
+				cond lastVal = withIterationCtxt $ \it previousVals ->
+					cond' it previousVals lastVal
+					where
+						cond' it (previousVal:_) lastVal =
+							if not $ it < maxIt
+							then
+								return $ Just $ StopReason_MaxIt it
+							else
+								fmap (
+									listToMaybe .
+									catMaybes
+								) $
+								temp
+							where
+								temp :: m [Maybe StopReason]
+								temp =
+									mapM `flip` stopConds $ \stopCond ->
+										case stopCond of
+											StopIfConverges delta ->
+												if (NN.paramsDiff lastVal previousVal <= delta)
+												then
+													return $ return $ StopReason_Converged delta it
+												else return Nothing
+											StopIfQualityReached quality ->
+												if (testWithTrainingData lastVal >= quality)
+												then
+													do
+														--doLog $ "cond quali: " ++ show (testWithTrainingData lastVal)
+														return $ return $ StopReason_QualityReached quality it
+												else return $ Nothing
+						cond' _ _ _ = return $ Nothing
+
 				showNWInfo network =
 					do
 						let qualityTraining = testWithTrainingData network
@@ -143,6 +161,7 @@ testNeuronalNetworks
 									expectedLabels
 							in
 								doLog $ concat ["quality of classifying test data: ", show qualityTestData]
+
 				testWithTrainingData nw =
 					testNW nw
 						(Lina.fromRows $ map fst $ trainingData)
