@@ -15,18 +15,17 @@ type ClassificationParam
 calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams set1 set2 =
 	calcClassificationParams_extendedVecs
-		(prependOnes set1)
-		(prependOnes set2)
+		(extendInputData set1)
+		(extendInputData set2)
 
 calcClassificationParams_extendedVecs :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams_extendedVecs set1 set2 =
-	last $
 	runIdentity $
-	iterateWhileM 1000 cond
+	iterateWhileM_withCtxt 0 cond
 		(return . perceptronStepAll set1 set2)
 		(Lina.konst 0 $ Lina.cols set1)
 	where
-		cond (lastBeta:_) =
+		cond lastBeta = return $
 			not $
 			(
 				(<=0.01) $ pnorm . cmap fromIntegral $
@@ -41,10 +40,6 @@ calcClassificationParams_extendedVecs set1 set2 =
 				classify_extendedInput (-1,1) lastBeta $
 					set2
 			)
-
-pnorm :: Vector -> R
-pnorm x =
-	sqrt $ x <.> x
 
 perceptronStepAll set1 set2 param =
 	perceptronStep (-1) set1
@@ -70,7 +65,7 @@ perceptronStep expectedLabel set param =
 
 classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify labels beta =
-	classify_extendedInput labels beta . prependOnes
+	classify_extendedInput labels beta . extendInputData
 
 classify_extendedInput :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify_extendedInput labels beta input =
@@ -84,7 +79,3 @@ classifySingleSample_extended (labelNeg, labelPos) beta input =
 	if (beta <.> input) >= 0
 	then labelPos
 	else labelNeg
-
-
-prependOnes m =
-	konst 1 (rows m,1) ||| m

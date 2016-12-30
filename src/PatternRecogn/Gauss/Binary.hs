@@ -42,9 +42,8 @@ classifyProjected labels projectionVec params =
 
 findProjection :: Vector -> ClassificationParam -> Vector
 findProjection startVec params@ClassificationParam{..} =
-	last $
 	runIdentity $
-	iterateWhileM 1000 (const True) (return . itFunc) $
+	iterateWhileM_withCtxt 0 (\_ -> askIt >>= \i -> return $ i < 1000) (return . itFunc) $
 	startVec
 	where
 		itFunc :: Vector -> Vector
@@ -117,8 +116,3 @@ infoStringForParam ClassificationParam{..} =
 	, concat $ ["cov1 size:", show $ size covariance1 ]
 	, concat $ ["cov2 size:", show $ size covariance2 ]
 	]
-
--- helper functions
-
-prependOnes m =
-	konst 1 (rows m,1) ||| m

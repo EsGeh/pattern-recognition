@@ -3,6 +3,7 @@ module PatternRecogn.LinearRegression where
 
 import PatternRecogn.Lina
 import PatternRecogn.Types
+import PatternRecogn.Utils
 
 
 type ClassificationParam = Vector
@@ -12,7 +13,7 @@ calcClassificationParams set1 set2 =
 	flatten $ -- matrix to vector
 	let
 		x =
-			prependOnes $
+			extendInputData $
 				set1
 				===
 				set2
@@ -38,7 +39,7 @@ calcClassificationParams set1 set2 =
 classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify (labelNeg, labelPos) beta input =
 	cmap (assignLabels . sgn) $
-		prependOnes input #> beta
+		extendInputData input #> beta
 	where
 		sgn :: Double -> Double
 		sgn x =
@@ -51,8 +52,3 @@ classify (labelNeg, labelPos) beta input =
 infoStringForParam :: ClassificationParam -> String
 infoStringForParam beta =
 	concat $ ["beta size:", show $ size beta]
-
--- | helper functions
-
-prependOnes m =
-	konst 1 (rows m,1) ||| m

@@ -4,46 +4,111 @@ module PatternRecogn.Utils where
 import PatternRecogn.Types
 import qualified PatternRecogn.Lina as Lina
 
-import Control.Monad.State
+import qualified Data.Vector as Vec
+import Control.Monad.State.Strict
+import Control.Monad.Reader
 import Data.List
 
 
--- | iterate a function a number of times while a condition is true
-iterateWhileM ::
-	forall a m .
+iterateWhileM_withCtxt ::
+	forall a m stop .
 	(Monad m) =>
-	Int -- max iterations
-	-> ([a] -> Bool) -- condition to continue
-	-> (a -> m a) -> a -- function and start value
-	-> m [a]
-iterateWhileM maxIt cond f =
-	flip evalStateT (maxIt, []) .
-	iterateM f'
+	Int
+	-> (a -> IterationMonadT [a] m Bool)
+	-> (a -> IterationMonadT [a] m a)
+	-> a
+	-> m a
+iterateWhileM_withCtxt numPrevVals cond f =
+	iterateWithCtxtM numPrevVals f'
 	where
-		f' :: a -> StateT (Int, [a]) m (Maybe a)
-		f' x =
+		f' :: a -> IterationMonadT [a] m (Either a a)
+		f' x = 
 			do
-				(i, oldVals) <- get
-				if i > 0 && cond (x:oldVals)
-					then
+				continue <- cond x
+				if continue
+				then Right <$> f x
+				else return $ Left $ x
+
+{-
+iterateWhileM_ext ::
+	forall a m stopInfo .
+	Monad m =>
+	(Int -> [a] -> m (Maybe stopInfo))
+	-> (Int -> a -> m a)
+	-> a
+	-> m ([a], stopInfo)
+iterateWhileM_ext cond f x =
+	flip evalStateT (0, [x]) $
+	iterateM f' x
+	where
+		f' :: a -> StateT (Int, [a]) m (Either stopInfo a)
+		f' x =
+			get >>= \(it, oldVals) ->
+				do
+					continue <- lift $ cond it oldVals
+					case continue of
+						Nothing ->
+							do
+								newVal <- lift $ f it x
+								put (it+1, newVal: oldVals)
+								return $ Right $ newVal
+						Just stopInfo ->
+							return $ Left stopInfo
+-}
+
+iterateWithCtxtM ::
+	forall a m stop .
+	(Monad m) =>
+	Int -- number of previous vals to be stored
+	-> (a -> IterationMonadT [a] m (Either stop a))
+	-> a
+	-> m stop
+iterateWithCtxtM numPrevVals f start =
+	evalStateT `flip` IterationCtxt 0 (Vec.fromList []) $
+	iterateM `flip` start $
+	f'
+	where
+		f' :: a -> StateT (IterationCtxt (InternalPrevVals a)) m (Either stop a)
+		f' x =
+			(get >>=) $
+			(. (\ctxt -> (iteration ctxt, previousVals ctxt))) $
+			uncurry f''
+			where
+				f'' :: Int -> InternalPrevVals a -> StateT (IterationCtxt (InternalPrevVals a)) m (Either stop a)
+				f'' it lastVals =
 						do
-							put (i-1, x:oldVals)
-							lift $
-								(Just <$> f x)
-					else
-						return Nothing
+							put $! IterationCtxt (it+1) $! Vec.take numPrevVals $! x `Vec.cons` lastVals
+							lift $ runReaderT `flip` (IterationCtxt it $ Vec.toList lastVals) $ f x
+
+withIterationCtxt :: Monad m => (Int -> [a] -> m b) -> IterationMonadT [a] m b
+withIterationCtxt f =
+	ask >>= \ctxt -> lift $ f (iteration ctxt) (previousVals ctxt)
+
+askIt :: Monad m => IterationMonadT last m Int
+askIt = asks iteration
+askPreviousVals :: Monad m => IterationMonadT last m last
+askPreviousVals = asks previousVals
+
+type IterationMonadT lastVals m a = ReaderT (IterationCtxt lastVals) m a
+
+data IterationCtxt lastVals
+	= IterationCtxt {
+		iteration :: Int,
+		previousVals :: lastVals
+	}
+
+type InternalPrevVals a = Vec.Vector a
 
 -- | iterate a monadic function
 iterateM ::
 	(Monad m) =>
-	(a -> m (Maybe a)) -> a -> m [a]
+	(a -> m (Either stopInfo a)) -> a -> m stopInfo
 iterateM f x =
 	do
 		maybeNextVal <- f x
-		fmap (x :) $
-			case maybeNextVal of
-				Nothing -> return []
-				Just nextVal -> iterateM f nextVal
+		case maybeNextVal of
+			Left stopInfo -> return stopInfo
+			Right nextVal -> iterateM f nextVal
 
 -- | sort list elements into buckets based on a property:
 partitionBy :: (Eq b, Ord b) => (a -> b) -> [a] -> [[a]]
@@ -62,14 +127,37 @@ concIfEq indexF partitions@(firstPart:restParts) b
 	| indexF (head firstPart) == indexF (head b) = (b ++ firstPart):restParts
 	| otherwise = b : partitions
 
-vecFromTuple :: (Double,Double) -> Vector
-vecFromTuple (x,y) =
+uncurry3 f (a,b,c) = f a b c
+
+setElemAt i x l =
+	take i l
+	++ (if i>=0 && i<length l then [x] else [])
+	++ drop (i+1) l
+
+vecFromTuple2 :: (Double,Double) -> Vector
+vecFromTuple2 (x,y) =
 	Lina.fromList [x,y]
 
-vecToTuple :: Vector -> (Double, Double)
-vecToTuple =
+vecToTuple2 :: Vector -> (Double, Double)
+vecToTuple2 =
 	listToTuple .
 	Lina.toList
 	where
 		listToTuple [x,y] = (x,y)
 		listToTuple _ = error "error converting list to tuple"
+
+pnorm :: Vector -> R
+pnorm x =
+	sqrt $ x <.> x
+
+sigmoid x = 1 / (1 + exp (-x))
+sigmoidDerivFromRes x = x * (1 - x)
+{-
+sigmoidDeriv x =
+	let s = sigmoid x
+	in s * (1 - s)
+-}
+
+extendInputData :: Matrix -> Matrix
+extendInputData m =
+	konst 1 (rows m,1) ||| m
