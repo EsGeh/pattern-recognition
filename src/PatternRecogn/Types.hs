@@ -2,7 +2,7 @@ module PatternRecogn.Types(
 	-- ClassificationParam(..),
 	MonadLog(..),
 	Label,
-	TrainingData,
+	TrainingDataBundled,
 	module Lina
 ) where
 
@@ -13,10 +13,11 @@ import Foreign.C.Types( CInt )
 
 type Label = CInt
 
-type TrainingData =
-	[(Matrix,Label)]
+type TrainingDataBundled =
+	[(Matrix, Label)]
 
--- type ClassificationParam = ()
+type TrainingData =
+	[(Vector, Label)]
 
 class (Monad m) => MonadLog m where
 	doLog :: String -> m ()

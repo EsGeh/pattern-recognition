@@ -5,7 +5,6 @@ module PatternRecogn.NeuronalNetworks(
 	ClassificationParam,
 	NetworkDimensions,
 	OutputInterpretation(..), outputInterpretationMaximum,
-	TrainingData,
 
 	trainNetwork,
 	calcClassificationParams,
@@ -25,7 +24,6 @@ import PatternRecogn.Utils
 import Control.Monad.Identity
 import Control.Monad.State.Strict
 import Data.Traversable( mapAccumL)
---import Data.List( intercalate )
 
 
 -- |represents the whole network
@@ -63,7 +61,7 @@ paramsDiff newWeights weights =
 
 calcClassificationParams ::
 	MonadLog m =>
-	OutputInterpretation -> R -> NetworkDimensions -> TrainingData -> m ClassificationParam
+	OutputInterpretation -> R -> NetworkDimensions -> TrainingDataBundled -> m ClassificationParam
 calcClassificationParams outputInterpretation learnRate dims =
 	trainNetwork dims learnRate
 	.

@@ -29,7 +29,8 @@ library
     , PatternRecogn.Lina
     , PatternRecogn.Utils
     -- Gauß classification:
-    , PatternRecogn.Gauss.Binary
+    , PatternRecogn.Gauss.Classify
+    , PatternRecogn.Gauss.Projected
     , PatternRecogn.Gauss.Types
     , PatternRecogn.Gauss.Utils
 		-- linear regression classification:

@@ -35,7 +35,7 @@ calcClassificationParams set1 set2 =
 	in
 		inv xTr_times_x_SAFE <> tr' x <> y
 
-	
+
 classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
 classify (labelNeg, labelPos) beta input =
 	cmap (assignLabels . sgn) $

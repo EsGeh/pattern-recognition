@@ -127,6 +127,8 @@ concIfEq indexF partitions@(firstPart:restParts) b
 	| indexF (head firstPart) == indexF (head b) = (b ++ firstPart):restParts
 	| otherwise = b : partitions
 
+mapToFst f (a,b) = (f a, b)
+mapToSnd f (a,b) = (a, f b)
 uncurry3 f (a,b,c) = f a b c
 
 setElemAt i x l =
