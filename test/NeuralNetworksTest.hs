@@ -1,12 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module Main where
 
 import Types
-import qualified TestMultiple as Test
+import TestMultiple as Test
 
 import qualified PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Utils

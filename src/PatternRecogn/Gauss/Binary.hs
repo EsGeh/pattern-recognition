@@ -9,30 +9,25 @@ import PatternRecogn.Types
 import PatternRecogn.Utils
 
 import Control.Monad.Random.Class
-import Data.List( intercalate )
+import Data.List( intercalate, maximumBy )
 import Control.Monad.Identity
 
 
-data ClassificationParam
-	= ClassificationParam {
-		min1 :: Vector,
-		min2 :: Vector,
-		covariance1 :: Matrix,
-		covariance2 :: Matrix
-	}
+type ClassificationParam = (Class, Class)
 
-classesFromBinary ClassificationParam{..} =
-	[Class min1 covariance1, Class min2 covariance2]
+
+fromBinary (c1, c2) = [c1, c2]
+
 
 -----------------------------------------------------------------
 -- fisher discriminant:
 -----------------------------------------------------------------
 
 findProjectionWithRnd :: MonadRandom m => ClassificationParam -> m Vector
-findProjectionWithRnd param =
+findProjectionWithRnd param@(Class{ class_min = center },_) =
 	flip findProjection param  <$> randomVec
 	where
-		randomVec = (vector . take (size $ min1 param)) <$> getRandoms
+		randomVec = (vector . take (size $ center)) <$> getRandoms
 
 classifyProjected :: (Label, Label) -> Vector -> ClassificationParam -> Matrix -> VectorOf Label
 classifyProjected labels projectionVec params =
@@ -41,7 +36,12 @@ classifyProjected labels projectionVec params =
 	asColumn . (#> projectionVec) -- multiply every sample with the fisherVector
 
 findProjection :: Vector -> ClassificationParam -> Vector
-findProjection startVec params@ClassificationParam{..} =
+findProjection
+		startVec
+		params@( Class{class_min=min1, class_cov=covariance1}
+		, Class{class_min=min2, class_cov=covariance2}
+		)
+	=
 	runIdentity $
 	iterateWhileM_withCtxt 0 (\_ -> askIt >>= \i -> return $ i < 1000) (return . itFunc) $
 	startVec
@@ -57,23 +57,24 @@ findProjection startVec params@ClassificationParam{..} =
 			*
 			(inv (covariance1 + covariance2) #> (min1 - min2) :: Vector)
 
-projectClasses projectionVec ClassificationParam{..} =
-	ClassificationParam {
-		min1 = scalar $ min1 <.> projectionVec,
-		min2 = scalar $ min2 <.> projectionVec,
-		covariance1 =
-			scalar $
-				projectionVec <.> (covariance1 #> projectionVec),
-		covariance2 =
-			scalar $
-				projectionVec <.> (covariance2 #> projectionVec)
-	}
+projectClasses projectionVec (class1, class2) =
+	map `flip` [class1, class2] $
+	\Class{ class_min=center, class_cov=cov } ->
+		Class{
+			class_min = scalar $ center <.> projectionVec,
+			class_cov =  scalar $ projectionVec <.> (cov #> projectionVec)
+		}
 
 fisherDiscr :: ClassificationParam -> Vector -> Double
-fisherDiscr ClassificationParam{..} vec =
-	(min1 <.> vec - min2 <.> vec) ** 2
-	/
-	(vec <.> (covariance1 #> vec) + vec <.> (covariance2 #> vec))
+fisherDiscr
+		( Class{class_min=min1, class_cov=covariance1}
+		, Class{class_min=min2, class_cov=covariance2}
+		)
+		vec
+	=
+		(min1 <.> vec - min2 <.> vec) ** 2
+		/
+		(vec <.> (covariance1 #> vec) + vec <.> (covariance2 #> vec))
 
 
 -----------------------------------------------------------------
@@ -82,37 +83,52 @@ fisherDiscr ClassificationParam{..} vec =
 
 calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams set1 set2 =
-	ret
-	where
-		ret = ClassificationParam {
-			min1 = average $ toRows set1,
-			min2 = average $ toRows set2,
-			covariance1 = cov_SAFE (min1 ret) set1,
-			covariance2 = cov_SAFE (min2 ret) set2
-		}
+	let
+		[class1, class2] = map `flip` [set1, set2] $
+			\set ->
+				let
+					center = average $ toRows set
+				in
+					Class{
+						class_min = center,
+						class_cov = cov_SAFE center set
+					}
+	in
+		(class1, class2)
 
 classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
-classify (labelNeg, labelPos) ClassificationParam{..} =
+classify (labelNeg, labelPos) (class1, class2) =
 	fromList
 	.
 	map classifySingleVec
 	.
 	toRows
 	where
-		classifySingleVec :: Vector -> Label
 		classifySingleVec x =
-			if
-				mahalanobis min1 covariance1 x > mahalanobis min2 covariance2 x
-			then
-				labelNeg
-			else
-				labelPos
+			toLabels $
+			retMaxIndex $
+			flip map [class1, class2] $
+			\Class{ class_min = center, class_cov = cov } ->
+				mahalanobis center cov x
+		retMaxIndex :: Ord a => [a] -> Int
+		retMaxIndex l =
+			snd $
+			maximumBy (\x y -> fst x `compare` fst y) $
+			l `zip` [0..]
+		toLabels 0 = labelNeg
+		toLabels 1 = labelPos
+		toLabels _ = error "error classifying: index out of bounds!"
 
 infoStringForParam :: ClassificationParam -> String
-infoStringForParam ClassificationParam{..} =
-	intercalate "\n" $
-	[ concat $ ["min1 size:", show $ size min1]
-	, concat $ ["min2 size:", show $ size min2 ]
-	, concat $ ["cov1 size:", show $ size covariance1 ]
-	, concat $ ["cov2 size:", show $ size covariance2 ]
-	]
+infoStringForParam =
+	intercalate "\n"
+	.
+	map infoStringForSingleClass
+	.
+	fromBinary
+	where
+		infoStringForSingleClass Class{ class_min = center, class_cov = cov } =
+			intercalate "\n" $
+			[ concat $ ["center size:", show $ size center]
+			, concat $ ["covariance size:", show $ size cov]
+			]

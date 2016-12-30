@@ -22,7 +22,7 @@ data AlgorithmInput =
 	}
 	deriving( Show )
 
-type TrainingData = NN.TrainingData
+--type TrainingData = NN.TrainingData
 
 data TestFunctionParams
 	= TestFunctionParams {

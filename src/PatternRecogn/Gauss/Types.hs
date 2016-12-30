@@ -2,6 +2,7 @@
 module PatternRecogn.Gauss.Types where
 
 import PatternRecogn.Types
+import Data.List( intercalate )
 
 
 type Classes = [Class]
@@ -14,7 +15,7 @@ data Class
 
 class_prettyShow :: Class -> String
 class_prettyShow Class{..} =
-	unlines $
+	intercalate "\n" $
 	[ concat $ ["average: ", show class_min]
 	, concat $ ["cov: ", show $ class_cov]
 	]

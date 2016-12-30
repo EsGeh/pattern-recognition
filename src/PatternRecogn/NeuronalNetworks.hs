@@ -36,9 +36,6 @@ type ClassificationParam
 
 type NetworkDimensions = [Int]
 
-type TrainingData =
-	[(Matrix,Label)]
-
 type TrainingDataInternal =
 	[(Vector,Vector)] -- sample, expected output
 
