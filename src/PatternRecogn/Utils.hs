@@ -1,8 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module PatternRecogn.Utils where
 
-import PatternRecogn.Types
-import qualified PatternRecogn.Lina as Lina
+import PatternRecogn.Types hiding( cond )
+import qualified PatternRecogn.Lina as Lina hiding( cond )
 
 import qualified Data.Vector as Vec
 import Control.Monad.State.Strict
@@ -11,7 +11,7 @@ import Data.List
 
 
 iterateWhileM_withCtxt ::
-	forall a m stop .
+	forall a m .
 	(Monad m) =>
 	Int
 	-> (a -> IterationMonadT [a] m Bool)
@@ -111,7 +111,7 @@ iterateM f x =
 			Right nextVal -> iterateM f nextVal
 
 -- | sort list elements into buckets based on a property:
-partitionBy :: (Eq b, Ord b) => (a -> b) -> [a] -> [[a]]
+partitionBy :: (Ord b) => (a -> b) -> [a] -> [[a]]
 partitionBy indexF =
 	foldl (concIfEq indexF) []
 	.

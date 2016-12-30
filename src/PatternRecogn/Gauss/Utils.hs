@@ -8,30 +8,30 @@ average x =
 	sum $
 	x
 
-cov_SAFE min set =
+cov_SAFE center set =
 	if det cov > 0.01
 	then cov
 	else cov + alpha * ident (rows cov)
 	where
-		cov = covariance min set
+		cov = covariance center set
 		alpha = 0.01
 
 covariance :: Vector -> Matrix -> Matrix
-covariance min set =
+covariance center set =
 	let
-		centeredAroundMin = set - repmat (asRow min) countSamples 1
+		centered = set - repmat (asRow center) countSamples 1
 		countSamples = rows set
 	in
 		(/ fromIntegral countSamples) $
 		sum $
 		map (\v -> v `outer` v) $
 		toRows $
-		centeredAroundMin
+		centered
 
 mahalanobis :: Vector -> Matrix -> Vector -> R
-mahalanobis min cov x =
+mahalanobis center cov x =
 	let
-		centeredX = x - min
+		centeredX = x - center
 		inputDist =
 			centeredX `dot` (inv cov #> centeredX)
 	in

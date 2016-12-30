@@ -2,9 +2,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
 module Main where
 
---import Plot
 import Types
 import qualified TestMultiple as Test
 
@@ -19,7 +19,6 @@ import qualified Data.ByteString.Lazy as BS
 import qualified Data.Vector as Vec
 import Data.Char
 import Control.Applicative
-import Control.Monad.Random as Rand
 import Data.List( intercalate )
 
 trainingDataFormat =
@@ -200,6 +199,7 @@ toTrainingData l =
 		map (map fromIntegral) $
 		map ((\(x,y) -> [x,y]) . fst) l
 
+boolOpToIntOp :: (Bool -> Bool -> Bool) -> Int -> Int -> Int
 boolOpToIntOp op x y=
 	case op (x>0) (y>0) of
 		True -> 1

@@ -9,12 +9,9 @@ import PatternRecogn.Lina as Lina
 import PatternRecogn.Gauss.Types
 
 import Graphics.Rendering.Chart.Easy as Chart hiding( Matrix, Vector )
---import Graphics.Rendering.Chart as Chart hiding( Matrix )
-import Graphics.Rendering.Chart.Backend.Diagrams as Chart hiding( Matrix, Vector )
-import Data.Default.Class
+import Graphics.Rendering.Chart.Backend.Diagrams as Chart
 
-import Control.Monad.Trans
-import Control.Lens
+--import Control.Lens
 
 
 -- plot 1-dim data and estimated propability measure (gaussian)
@@ -54,11 +51,11 @@ matToVal =
 		f _ = error "error converting to vector to scalar!"
 
 gaussLine :: R -> R -> [[(R,R)]]
-gaussLine min cov =
+gaussLine center cov =
 	return $
-	map (\x -> (x, mahalanobis (scalar min) (scalar cov) (scalar x))) $
+	map (\x -> (x, mahalanobis (scalar center) (scalar cov) (scalar x))) $
 	map (
-		\x -> (min - width / 2) + (x * width / count)
+		\x -> (center - width / 2) + (x * width / count)
 	) $
 	[0..count]
 	where
@@ -88,9 +85,9 @@ plot path dots params =
 						params
 
 lineFromGauss :: Vector -> Matrix -> [Vector]
-lineFromGauss min cov =
+lineFromGauss center cov =
 	toRows $
-	(+ asRow min) $ -- shift to center
+	(+ asRow center) $ -- shift to center
 	(<> cov) $ 			-- multiply with covariance matrix
 	circleDots 
 	where

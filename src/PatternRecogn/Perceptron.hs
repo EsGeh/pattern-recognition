@@ -1,8 +1,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 module PatternRecogn.Perceptron where
 
-import PatternRecogn.Lina as Lina
-import PatternRecogn.Types
+import PatternRecogn.Lina as Lina hiding( cond )
+import PatternRecogn.Types hiding( cond )
 import PatternRecogn.Utils
 
 import Control.Monad.Identity

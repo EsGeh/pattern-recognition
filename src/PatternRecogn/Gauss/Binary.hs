@@ -71,7 +71,7 @@ projectClasses projectionVec ClassificationParam{..} =
 
 fisherDiscr :: ClassificationParam -> Vector -> Double
 fisherDiscr ClassificationParam{..} vec =
-	(min1 <.> vec - min2 <.> vec) ^ 2
+	(min1 <.> vec - min2 <.> vec) ** 2
 	/
 	(vec <.> (covariance1 #> vec) + vec <.> (covariance2 #> vec))
 

@@ -3,18 +3,17 @@
 {-# LANGUAGE RecordWildCards #-}
 module TestMultiple where
 
+import Utils
 import Types
-import Plot
-import PatternRecogn.Types
-import PatternRecogn.Lina as Lina
+import PatternRecogn.Types hiding( cond )
+import PatternRecogn.Lina as Lina hiding( cond )
 import PatternRecogn.Utils
 
 import qualified PatternRecogn.NeuronalNetworks as NN
 
-import Control.Monad.Random as Rand
-import Control.Monad.State
 import Data.List( intercalate )
 import Data.Maybe
+
 
 data AlgorithmInput =
 	AlgorithmInput {
@@ -66,7 +65,7 @@ testNeuronalNetworks
 		testNeuronalNetworks' trainingData =
 			do
 				doLog $ "network dimensions: " ++ show dims
-				(nw,stopReason) <- trainNetwork
+				(_, stopReason) <- trainNetwork
 				case stopReason of
 					StopReason_MaxIt it ->
 						doLog $ "stopped. \n\tReason: iterations >=" ++ show it
@@ -95,9 +94,9 @@ testNeuronalNetworks
 					(NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m (Maybe StopReason))
 					-> NN.ClassificationParam
 					-> IterationMonadT [NN.ClassificationParam] m (Either (NN.ClassificationParam, StopReason) NN.ClassificationParam)
-				updateNW cond network =
+				updateNW cond' network =
 					do
-					continue <- cond network
+					continue <- cond' network
 					case continue of
 						Nothing ->
 							do
@@ -108,18 +107,18 @@ testNeuronalNetworks
 						updateNW' :: 
 							NN.ClassificationParam
 							-> IterationMonadT [NN.ClassificationParam] m NN.ClassificationParam
-						updateNW' network =
+						updateNW' nw =
 							withIterationCtxt $ \it _ ->
 								do
 									when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
 										do
 											doLog $ concat ["iteration: ", show it]
-											showNWInfo network
-									NN.adjustWeights learnRate trainingData network
+											showNWInfo nw
+									NN.adjustWeights learnRate trainingData nw
 
 				cond :: NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m (Maybe StopReason)
-				cond lastVal = withIterationCtxt $ \it previousVals ->
-					cond' it previousVals lastVal
+				cond x = withIterationCtxt $ \it previousVals ->
+					cond' it previousVals x
 					where
 						cond' it (previousVal:_) lastVal =
 							if not $ it < maxIt
@@ -173,14 +172,6 @@ testNeuronalNetworks
 						calcClassificationQuality
 							expectedLabels
 									testClasses
-
-calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
-calcClassificationQuality expected res =
-	(/ fromIntegral (size res)) $
-	sum $
-	map (\x -> if x/=0 then 0 else 1) $
-	toList $
-	expected - res
 
 {-
 descriptionString

@@ -1,18 +1,31 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
-module PatternRecogn.NeuronalNetworks where
+module PatternRecogn.NeuronalNetworks(
+	ClassificationParam,
+	NetworkDimensions,
+	OutputInterpretation(..), outputInterpretationMaximum,
+	TrainingData,
 
-import PatternRecogn.Lina as Lina
-import PatternRecogn.Types
+	trainNetwork,
+	calcClassificationParams,
+	classify,
+
+	initialNetwork,
+	adjustWeights,
+	paramsDiff,
+	toInternalTrainingData,
+	TrainingDataInternal,
+) where
+
+import PatternRecogn.Lina as Lina hiding( cond )
+import PatternRecogn.Types hiding( cond )
 import PatternRecogn.Utils
 
 import Control.Monad.Identity
 import Control.Monad.State.Strict
-import Control.Monad.Writer hiding( (<>) )
-import Data.Maybe
-import Data.Traversable( for, mapAccumL)
-import Data.List( intercalate )
+import Data.Traversable( mapAccumL)
+--import Data.List( intercalate )
 
 
 -- |represents the whole network
@@ -92,7 +105,6 @@ trainNetwork dimensions learnRate sets =
 			it < 10000
 			&&
 			paramsDiff weights prevWeights >= 0.1
-		cond _ = return $ True
 		initNW = initialNetwork inputDim dimensions
 		inputDim =
 			Lina.size $ fst $ head sets
