@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
-module TestMultiple where
+module NeuralNetworksTest.TestImpl where
 
 import Utils
 import Types
@@ -17,12 +17,10 @@ import Data.Maybe
 
 data AlgorithmInput =
 	AlgorithmInput {
-		algInput_train :: TrainingData,
+		algInput_train :: TrainingDataBundled,
 		algInput_input :: Maybe (Matrix, VectorOf Label) -- inputData, expected label
 	}
 	deriving( Show )
-
---type TrainingData = NN.TrainingData
 
 data TestFunctionParams
 	= TestFunctionParams {

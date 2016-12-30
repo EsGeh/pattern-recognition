@@ -15,6 +15,7 @@ import qualified PatternRecogn.Perceptron as Perceptron
 import Control.Monad.Random as Rand
 import Data.List( intercalate )
 
+
 data AlgorithmInput =
 	AlgorithmInput {
 		algInput_train1 :: Matrix,
@@ -97,14 +98,6 @@ testWithAlg
 		return $
 			calcClassificationQuality
 				(cmap round $ inputLabels) classified
-
-calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
-calcClassificationQuality expected res =
-	(/ fromIntegral (size res)) $
-	sum $
-	map (\x -> if x/=0 then 0 else 1) $
-	toList $
-	expected - res
 
 descriptionString
 	set1 set2

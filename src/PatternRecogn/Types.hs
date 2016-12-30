@@ -3,6 +3,7 @@ module PatternRecogn.Types(
 	MonadLog(..),
 	Label,
 	TrainingDataBundled,
+	TrainingData,
 	module Lina
 ) where
 

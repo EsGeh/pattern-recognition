@@ -57,9 +57,10 @@ test-suite neuralNetworks-test
   main-is:             NeuralNetworksTest.hs
   other-modules:
     Types
+    , LoadTestData
     , Utils
-    , TestBinary
-    , TestMultiple
+    --, TestBinary
+    , NeuralNetworksTest.TestImpl
     , Plot
   build-depends:
     patternRecogn
