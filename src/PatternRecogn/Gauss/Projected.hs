@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module PatternRecogn.Gauss.Projected where
 
-import PatternRecogn.Gauss.Classify
+import PatternRecogn.Gauss.Classify as Gauss
 import PatternRecogn.Gauss.Types
 
 import PatternRecogn.Lina
@@ -12,31 +12,63 @@ import Control.Monad.Random.Class
 import Control.Monad.Identity
 
 
-type ClassificationParamBinary = (Class, Class)
+type ClassificationParamBinary = (TwoClasses,(Label, Label))
+type TwoClasses = (Class, Class)
+type ClassificationParamBinaryWithProjectionVec = (ClassificationParamBinary, Vector)
 
 fromBinary (c1, c2) = [c1, c2]
+toBinaryParam l =
+	let binL = take 2 $ l
+	in
+		if length binL == 2
+		then Just $
+			let [(c1,label1), (c2,label2)] = binL
+			in ((c1,c2),(label1,label2))
+		else
+			Nothing
+
+calcParamBinary calcParam trainingData =
+	let Just param =
+		toBinaryParam $ calcParam $ fromTrainingDataBin $ trainingData
+	in param
+
+calcClassificationParamsWithRnd trainingData =
+	let
+		param@(classes,_) = calcParamBinary Gauss.calcClassificationParams trainingData
+	in
+		do
+			projectionVec <- findProjectionWithRnd classes
+			return $ (param, projectionVec)
+
+calcClassificationParams initVec trainingData =
+	let
+		param@(classes,_) = calcParamBinary Gauss.calcClassificationParams trainingData
+		projectionVec = findProjection initVec classes
+	in
+		(param, projectionVec)
 
 -----------------------------------------------------------------
 -- fisher discriminant:
 -----------------------------------------------------------------
 
-findProjectionWithRnd :: MonadRandom m => ClassificationParamBinary -> m Vector
+findProjectionWithRnd :: MonadRandom m => TwoClasses -> m Vector
 findProjectionWithRnd param@(Class{ class_min = center },_) =
 	flip findProjection param  <$> randomVec
 	where
 		randomVec = (vector . take (size $ center)) <$> getRandoms
 
-classifyProjected :: (Label, Label) -> Vector -> ClassificationParamBinary -> Matrix -> VectorOf Label
-classifyProjected (label1, label2) projectionVec (c1, c2) =
+classifyProjected :: ClassificationParamBinaryWithProjectionVec -> Matrix -> VectorOf Label
+classifyProjected  (((c1, c2),(label1, label2)),projectionVec)  =
 	classify [(c1, label1), (c2, label2)]
 	.
 	asColumn . (#> projectionVec) -- multiply every sample with the fisherVector
 
-findProjection :: Vector -> ClassificationParamBinary -> Vector
+findProjection :: Vector -> TwoClasses -> Vector
 findProjection
 		startVec
-		params@( Class{class_min=min1, class_cov=covariance1}
-		, Class{class_min=min2, class_cov=covariance2}
+		params@(
+			Class{class_min=min1, class_cov=covariance1}
+			, Class{class_min=min2, class_cov=covariance2}
 		)
 	=
 	runIdentity $
@@ -62,7 +94,7 @@ projectClasses projectionVec =
 			class_cov =  scalar $ projectionVec <.> (cov #> projectionVec)
 		}
 
-fisherDiscr :: ClassificationParamBinary -> Vector -> Double
+fisherDiscr :: TwoClasses -> Vector -> Double
 fisherDiscr
 		( Class{class_min=min1, class_cov=covariance1}
 		, Class{class_min=min2, class_cov=covariance2}

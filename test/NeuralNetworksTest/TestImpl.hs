@@ -15,13 +15,6 @@ import Data.List( intercalate )
 import Data.Maybe
 
 
-data AlgorithmInput =
-	AlgorithmInput {
-		algInput_train :: TrainingDataBundled,
-		algInput_input :: Maybe (Matrix, VectorOf Label) -- inputData, expected label
-	}
-	deriving( Show )
-
 data TestFunctionParams
 	= TestFunctionParams {
 		loggingFreq :: Int,
@@ -50,14 +43,14 @@ testNeuronalNetworks ::
 	forall m .
 	MonadLog m =>
 	TestFunctionParams
-	-> AlgorithmInput -> m ()
+	-> TestData -> m ()
 testNeuronalNetworks
 		TestFunctionParams{networkParams = NetworkParams{..}, ..}
-		algInput@AlgorithmInput{ algInput_input = mTestData }
+		algInput@TestData{ testData_input = mTestData }
 	=
 	testNeuronalNetworks' $ 
 			NN.toInternalTrainingData outputInterpretation $
-			algInput_train algInput
+			testData_train algInput
 	where
 		testNeuronalNetworks' :: NN.TrainingDataInternal -> m ()
 		testNeuronalNetworks' trainingData =

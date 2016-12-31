@@ -4,6 +4,7 @@ module PatternRecogn.Types(
 	Label,
 	TrainingDataBundled,
 	TrainingData,
+	TrainingDataBin(), toTrainingDataBin, fromTrainingDataBin,
 	module Lina
 ) where
 
@@ -19,6 +20,23 @@ type TrainingDataBundled =
 
 type TrainingData =
 	[(Vector, Label)]
+
+newtype TrainingDataBin
+	= TrainingDataBin {
+		fromTrainingDataBin :: TrainingDataBundled
+	}
+
+toTrainingDataBin bundled =
+	let
+		potentialData = take 2 bundled
+	in
+		if
+			length potentialData == 2
+		then
+			Just $ TrainingDataBin potentialData
+		else
+			Nothing
+
 
 class (Monad m) => MonadLog m where
 	doLog :: String -> m ()
