@@ -25,7 +25,7 @@ testWithAlg ::
 	MonadIO m =>
 	(TrainingDataBundled -> m param)
 	-> (param -> Matrix -> m (VectorOf Label))
-	-> TestData
+	-> TestDataBundled
 	-> m ()
 testWithAlg =
 	testWithAlg' calcTestDataFromBundledTrainingData

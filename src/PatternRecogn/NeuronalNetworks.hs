@@ -14,7 +14,8 @@ module PatternRecogn.NeuronalNetworks(
 	initialNetwork,
 	adjustWeights,
 	paramsDiff,
-	toInternalTrainingData,
+	internalFromTrainingData,
+	internalFromBundledTrainingData,
 	TrainingDataInternal,
 ) where
 
@@ -66,7 +67,7 @@ calcClassificationParams ::
 calcClassificationParams outputInterpretation learnRate dims =
 	trainNetwork dims learnRate
 	.
-	toInternalTrainingData outputInterpretation
+	internalFromBundledTrainingData outputInterpretation
 
 classify :: OutputInterpretation -> ClassificationParam -> Matrix -> VectorOf Label
 classify OutputInterpretation{..} param input =
@@ -198,7 +199,14 @@ feedForward_oneStep weights input =
 -- helpers
 ---------------------------------------------
 
-toInternalTrainingData OutputInterpretation{..} =
+internalFromTrainingData OutputInterpretation{..} =
+	map (mapToSnd $ labelToOutput)
+
+internalFromBundledTrainingData OutputInterpretation{..} =
+	map (mapToSnd $ labelToOutput)
+	.
+	fromBundled
+{-
 	join
 	.
 	map (uncurry toInternal)
@@ -206,6 +214,7 @@ toInternalTrainingData OutputInterpretation{..} =
 		toInternal :: Matrix -> Label -> TrainingDataInternal
 		toInternal set label =
 			Lina.toRows set `zip` repeat (labelToOutput label)
+-}
 
 extendVec x = Lina.fromList $ Lina.toList x ++ [1]
 

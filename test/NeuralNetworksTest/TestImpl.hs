@@ -49,7 +49,7 @@ testNeuronalNetworks
 		algInput@TestData{ testData_input = mTestData }
 	=
 	testNeuronalNetworks' $ 
-			NN.toInternalTrainingData outputInterpretation $
+			NN.internalFromTrainingData outputInterpretation $
 			testData_train algInput
 	where
 		testNeuronalNetworks' :: NN.TrainingDataInternal -> m ()

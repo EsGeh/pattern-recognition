@@ -1,8 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module PatternRecogn.Utils where
 
-import PatternRecogn.Types hiding( cond )
-import qualified PatternRecogn.Lina as Lina hiding( cond )
+--import PatternRecogn.Types hiding( cond )
+import PatternRecogn.Lina as Lina hiding( cond )
 
 import qualified Data.Vector as Vec
 import Control.Monad.State.Strict

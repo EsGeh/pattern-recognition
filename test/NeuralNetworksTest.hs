@@ -86,7 +86,7 @@ main =
 					outputInterpretation = (NN.outputInterpretationMaximum 10)
 				}
 			}
-			=<< Load.readTestInput (paths `zip` labels)
+			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
 
 		doLog $ "-------------------------------------------"
 		doLog $ "testing to classify test data (from file)..."
@@ -101,7 +101,7 @@ main =
 					outputInterpretation = (NN.outputInterpretationMaximum 10)
 				}
 			}
-			=<< Load.readTestInput (paths `zip` labels)
+			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
 
 	where
 		handleErrors x =
@@ -118,38 +118,6 @@ startToClassifyInfoStr l =
 			, "classifying to labels ", intercalate "," $ map (show . snd) l
 			, " in files ", intercalate "," $ map (show . fst) l
 			]
+
 -- (helpers: )
 -----------------------------------------------------------------
-
-logicalOp_testInput :: (Bool -> Bool -> Bool) -> TestData
-logicalOp_testInput op =
-	let
-		inputData :: Num a => [(a,a)]
-		inputData = liftA2 (,) [0,1] [0,1]
-		expectedOutput :: [Int]
-		expectedOutput = uncurry (boolOpToIntOp op) <$> inputData
-	in
-		TestData {
-			testData_train = 
-				map toTrainingData $
-				partitionBy snd $
-				inputData `zip` expectedOutput
-			, testData_input = Nothing
-		}
-
-toTrainingData :: [((Int,Int),Int)] -> (Matrix,Label)
-toTrainingData l =
-	let
-		label = snd $ head l
-	in
-		(,fromIntegral label) $
-		Lina.fromLists $
-		map (map fromIntegral) $
-		map ((\(x,y) -> [x,y]) . fst) l
-
-boolOpToIntOp :: (Bool -> Bool -> Bool) -> Int -> Int -> Int
-boolOpToIntOp op x y=
-	case op (x>0) (y>0) of
-		True -> 1
-		_ -> 0
-

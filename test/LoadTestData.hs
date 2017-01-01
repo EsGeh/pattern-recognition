@@ -25,7 +25,7 @@ pathFromLabel =
 
 -----------------------------------------------------------------
 
-readTestInput :: [(FilePath,Label)] -> ErrT IO TestData
+readTestInput :: [(FilePath,Label)] -> ErrT IO TestDataBundled
 readTestInput l =
 	let
 		paths = map fst l
