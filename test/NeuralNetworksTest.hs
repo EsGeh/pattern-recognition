@@ -7,12 +7,8 @@ import Types
 import NeuralNetworksTest.TestImpl as Test
 
 import qualified PatternRecogn.NeuronalNetworks as NN
-import PatternRecogn.Utils
 import PatternRecogn.Types
 
-import PatternRecogn.Lina as Lina
-
-import Control.Applicative
 import Data.List( intercalate )
 
 

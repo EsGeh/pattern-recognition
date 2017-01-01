@@ -1,6 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module LoadTestData where
+module LoadTestData(
+	pathFromLabel,
+	readTestInput, readTestInputBin,
+) where
 
 import Types
 import PatternRecogn.Types

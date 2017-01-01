@@ -26,7 +26,7 @@ type ClassificationParamBinary = (TwoClasses,(Label, Label))
 type TwoClasses = (Class, Class)
 type ClassificationParamBinaryWithProjectionVec = (ClassificationParamBinary, Vector)
 
-fromBinary (c1, c2) = [c1, c2]
+--fromBinary (c1, c2) = [c1, c2]
 toBinaryParam l =
 	let binL = take 2 $ l
 	in
