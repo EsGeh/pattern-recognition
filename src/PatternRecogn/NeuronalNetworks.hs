@@ -10,6 +10,7 @@ module PatternRecogn.NeuronalNetworks(
 	calcClassificationParams,
 	classify,
 
+	-- low level api:
 	initialNetwork,
 	adjustWeights,
 	paramsDiff,
@@ -127,17 +128,11 @@ adjustWeights_forOneSample learnRate (input, expectedOutput) weights =
 			outputs = reverse $ feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
 			derivatives =
 				map (cmap sigmoidDerivFromRes) $
-				(take (length outputs-1)) outputs
+				(take (length outputs-1)) $ -- deletes input
+				outputs
 			(lastOutput:_) = outputs
 			err = lastOutput - expectedOutput
-		{-
-		doLog $ "outputs size: " ++ show (map Lina.size outputs)
-		doLog $ "derivatives size: " ++ show (map Lina.size derivatives)
-		doLog $ "expectedOutput size: " ++ show (Lina.size expectedOutput)
-		doLog $ "err size: " ++ show (Lina.size err)
-		-}
 		res <- backPropagate learnRate outputs derivatives err weights
-		--doLog $ "new dimensions: " ++ show (map Lina.size res)
 		return res
 
 -- (steps const)
@@ -184,6 +179,7 @@ backPropagate
 
 twice a = (a,a)
 
+-- |returns the temporary output for every stage of the nw: input = output^0, output^1, .., output^depth = output
 feedForward ::
 	ClassificationParam -> Vector
 	-> [Vector]

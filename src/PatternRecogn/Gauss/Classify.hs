@@ -1,5 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
-module PatternRecogn.Gauss.Classify where
+module PatternRecogn.Gauss.Classify(
+	ClassificationParam,
+
+	calcClassificationParams,
+	classify,
+	infoStringForParam
+) where
 
 import PatternRecogn.Lina
 import PatternRecogn.Gauss.Utils

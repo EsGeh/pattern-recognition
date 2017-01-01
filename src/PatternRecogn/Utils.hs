@@ -29,33 +29,6 @@ iterateWhileM_withCtxt numPrevVals cond f =
 				then Right <$> f x
 				else return $ Left $ x
 
-{-
-iterateWhileM_ext ::
-	forall a m stopInfo .
-	Monad m =>
-	(Int -> [a] -> m (Maybe stopInfo))
-	-> (Int -> a -> m a)
-	-> a
-	-> m ([a], stopInfo)
-iterateWhileM_ext cond f x =
-	flip evalStateT (0, [x]) $
-	iterateM f' x
-	where
-		f' :: a -> StateT (Int, [a]) m (Either stopInfo a)
-		f' x =
-			get >>= \(it, oldVals) ->
-				do
-					continue <- lift $ cond it oldVals
-					case continue of
-						Nothing ->
-							do
-								newVal <- lift $ f it x
-								put (it+1, newVal: oldVals)
-								return $ Right $ newVal
-						Just stopInfo ->
-							return $ Left stopInfo
--}
-
 iterateWithCtxtM ::
 	forall a m stop .
 	(Monad m) =>

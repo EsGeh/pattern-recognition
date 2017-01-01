@@ -1,5 +1,4 @@
 module PatternRecogn.Types(
-	-- ClassificationParam(..),
 	MonadLog(..),
 	Label,
 	TrainingDataBundled,

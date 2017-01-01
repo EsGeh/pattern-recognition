@@ -1,5 +1,10 @@
 {-# LANGUAGE FlexibleContexts #-}
-module PatternRecogn.Perceptron where
+module PatternRecogn.Perceptron(
+	ClassificationParam, ClassificationParamWithLabels,
+
+	calcClassificationParams,
+	classify,
+) where
 
 import PatternRecogn.Lina as Lina hiding( cond )
 import PatternRecogn.Types hiding( cond )

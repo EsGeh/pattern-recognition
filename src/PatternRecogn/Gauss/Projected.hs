@@ -1,7 +1,17 @@
 {-# LANGUAGE FlexibleContexts #-}
-module PatternRecogn.Gauss.Projected where
+module PatternRecogn.Gauss.Projected(
+	ClassificationParamBinary, ClassificationParamBinaryWithProjectionVec,
 
-import PatternRecogn.Gauss.Classify as Gauss
+	calcParamBinary,
+	calcClassificationParams, calcClassificationParamsWithRnd,
+	classifyProjected,
+
+	-- low level api:
+	findProjection, findProjectionWithRnd,
+	projectClasses, fisherDiscr,
+) where
+
+import qualified PatternRecogn.Gauss.Classify as Gauss
 import PatternRecogn.Gauss.Types
 
 import PatternRecogn.Lina
@@ -59,7 +69,7 @@ findProjectionWithRnd param@(Class{ class_min = center },_) =
 
 classifyProjected :: ClassificationParamBinaryWithProjectionVec -> Matrix -> VectorOf Label
 classifyProjected  (((c1, c2),(label1, label2)),projectionVec)  =
-	classify [(c1, label1), (c2, label2)]
+	Gauss.classify [(c1, label1), (c2, label2)]
 	.
 	asColumn . (#> projectionVec) -- multiply every sample with the fisherVector
 
