@@ -4,7 +4,7 @@
 module PatternRecogn.NeuronalNetworks(
 	ClassificationParam,
 	NetworkDimensions,
-	OutputInterpretation(..), outputInterpretationMaximum,
+	OutputInterpretation(..), outputInterpretationMaximum, outputInterpretationSingleOutput,
 
 	trainNetwork,
 	calcClassificationParams,
@@ -12,7 +12,8 @@ module PatternRecogn.NeuronalNetworks(
 
 	-- low level api:
 	initialNetwork,
-	adjustWeights,
+	adjustWeightsBatch,
+	adjustWeightsBatchWithRnd,
 	paramsDiff,
 	internalFromTrainingData,
 	internalFromBundledTrainingData,
@@ -23,9 +24,11 @@ import PatternRecogn.Lina as Lina hiding( cond )
 import PatternRecogn.Types hiding( cond )
 import PatternRecogn.Utils
 
+import Control.Monad.Random
 import Control.Monad.Identity
 import Control.Monad.State.Strict
 import Data.Traversable( mapAccumL)
+import Data.List( intercalate )
 
 
 -- |represents the whole network
@@ -53,6 +56,18 @@ outputInterpretationMaximum count =
 		labelToOutput =
 			\lbl -> Lina.fromList $
 				setElemAt (fromIntegral lbl) 1 $ replicate count 0
+	}
+
+outputInterpretationSingleOutput =
+	OutputInterpretation{
+		outputToLabel = \x ->
+			case Lina.toList x of
+				[output] ->
+					round output
+					--if output >= 0.5 then 1 else 0
+				_ -> error "outputInterpretation: error!",
+		labelToOutput =
+			\lbl -> Lina.fromList [fromIntegral lbl]
 	}
 
 -- | sums up element wise differences
@@ -94,7 +109,7 @@ trainNetwork dimensions learnRate sets =
 	do
 		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initNW)
 		iterateWhileM_withCtxt 1 cond
-			(lift . adjustWeights learnRate sets)
+			(lift . adjustWeightsBatch learnRate sets)
 			initNW
 	where
 		cond weights = withIterationCtxt $ \it (prevWeights:_) ->
@@ -109,44 +124,97 @@ trainNetwork dimensions learnRate sets =
 initialNetwork inputSize dimensions =
 	map (Lina.konst 0) $ networkMatrixDimensions inputSize dimensions
 
-adjustWeights ::
+adjustWeightsBatchWithRnd ::
+	forall m .
+	(MonadLog m, MonadRandom m) =>
+	R
+	-> TrainingDataInternal ->
+	ClassificationParam -> m ClassificationParam
+adjustWeightsBatchWithRnd learnRate trainingData weights =
+	do
+		randomVals <- getRandomRs (0,1) :: m [R]
+		adjustWeightsBatch_intern randomVals learnRate trainingData weights
+
+adjustWeightsBatch ::
+	forall m .
 	MonadLog m =>
 	R
 	-> TrainingDataInternal ->
 	ClassificationParam -> m ClassificationParam
-adjustWeights learnRate =
-	foldr (<=<) return .
-	map (adjustWeights_forOneSample learnRate)
+adjustWeightsBatch =
+	adjustWeightsBatch_intern (repeat 0)
 
-adjustWeights_forOneSample ::
+adjustWeightsBatch_intern ::
+	forall m .
+	MonadLog m =>
+	[R]
+	-> R
+	-> TrainingDataInternal ->
+	ClassificationParam -> m ClassificationParam
+adjustWeightsBatch_intern randomVec learnRate trainingData weights =
+	do
+		(corrections :: [Matrix]) <-
+			combineCorrections
+			<$>
+			(mapM (correctionsFromSample `flip` weights) trainingData :: m [[Matrix]])
+		return $ applyCorrections learnRate corrections weights
+	where
+		combineCorrections correctionsForEachSample =
+			foldr1 (zipWith (+)) $
+			map (\(ws,rnd) -> (rnd `Lina.scale`) <$> ws) $
+			correctionsForEachSample `zip` randomVec
+
+adjustWeightsOnLine ::
+	forall m .
 	MonadLog m =>
 	R
-	-> (Vector, Vector)
-	-> ClassificationParam -> m ClassificationParam
-adjustWeights_forOneSample learnRate (input, expectedOutput) weights =
+	-> TrainingDataInternal ->
+	ClassificationParam -> m ClassificationParam
+adjustWeightsOnLine learnRate =
+	foldr (<=<) return .
+	map f
+	where
+		f :: (Vector, Vector) -> ClassificationParam -> m ClassificationParam
+		f sample weights =
+			do
+				weightUpdates <- correctionsFromSample sample weights
+				return $ applyCorrections learnRate weightUpdates weights
+
+applyCorrections learnRate weightsDeltas weights =
+	map `flip` (weights `zip` weightsDeltas) $ \(w, delta) -> w - learnRate `Lina.scale` delta
+
+correctionsFromSample ::
+	MonadLog m =>
+	(Vector, Vector)
+	-> ClassificationParam -> m [Matrix]
+correctionsFromSample (input, expectedOutput) weights =
 	do
 		let
 			outputs = reverse $ feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
-			derivatives =
+			derivatives = -- output to input
 				map (cmap sigmoidDerivFromRes) $
 				(take (length outputs-1)) $ -- deletes input
 				outputs
 			(lastOutput:_) = outputs
 			err = lastOutput - expectedOutput
-		res <- backPropagate learnRate outputs derivatives err weights
-		return res
+		corrections <- backPropagate outputs derivatives err weights
+		{-
+		doLog $ "--------------------"
+		doLog $ concat ["outputs: ", intercalate "\n" $ map show outputs]
+		doLog $ concat ["derivs: ", intercalate "\n" $ map show derivatives]
+		doLog $ concat ["err: ", show err]
+		doLog $ concat ["corrections: ", intercalate "\n" $ map show corrections]
+		-}
+		return corrections
 
--- (steps const)
 backPropagate ::
 	MonadLog m =>
-	R -- learnRate
-	-> [Vector] -- outputs
-	-> [Vector] -- derivatives
+	[Vector] -- outputs (output to input)
+	-> [Vector] -- derivatives (output to input)
 	-> Vector -- error
-	-> ClassificationParam
-	-> m ClassificationParam
+	-> ClassificationParam -- network weights (output to input)
+	-> m [Matrix] -- derivatives
 backPropagate
-		learnRate
 		outputs
 		derivatives
 		err
@@ -169,14 +237,14 @@ backPropagate
 							mapAccumL conc deltaLast (derivRest `zip` weightsOutToIn)
 							where
 								conc delta (deriv,weight) = twice $
-									deriv * removeLastRow weight #> delta
+									deriv * (removeLastRow weight #> delta)
 			removeLastRow = (??(Lina.DropLast 1, Lina.All))
 		--doLog $ "deltas dims: " ++ show (map Lina.size deltas)
 		return $
 			reverse $
-			flip map (zip3 weightsOutToIn deltas (drop 1 outputs)) $
-			\(weight, delta, output) ->
-				weight - Lina.tr ((learnRate `Lina.scale` delta) `Lina.outer` extendVec output)
+			flip map (zip deltas (drop 1 outputs)) $
+			\(delta, output) ->
+				Lina.tr (delta `Lina.outer` extendVec output)
 
 twice a = (a,a)
 

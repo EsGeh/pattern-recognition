@@ -21,6 +21,7 @@ main =
 	handleErrors $
 	do
 
+		{-
 		doLog $ "-------------------------------------------"
 		doLog $ "testing with operator \"and\"..."
 		Test.testNeuronalNetworks
@@ -50,22 +51,26 @@ main =
 				}
 			}
 			(logicalOp_testInput (||))
+		-}
 
 		doLog $ "-------------------------------------------"
 		doLog $ "testing with operator \"xor\"..."
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
-				loggingFreq = 0,
-				maxIt = 1000,
-				learnRate = 0.1,
-				stopConds = [Test.StopIfQualityReached 1],
+				loggingFreq = 1,
+				maxIt = 10,
+				learnRate = 1,
+				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.0000001],
 				networkParams = Test.NetworkParams{
-					dims = [2],
-					outputInterpretation = (NN.outputInterpretationMaximum 2)
+					dims = [2,1],
+					outputInterpretation =
+						NN.outputInterpretationSingleOutput
+						--(NN.outputInterpretationMaximum 2)
 				}
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
+		{-
 		let
 			labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels
@@ -98,6 +103,7 @@ main =
 				}
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
+		-}
 
 	where
 		handleErrors x =

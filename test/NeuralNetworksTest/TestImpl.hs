@@ -12,6 +12,7 @@ import PatternRecogn.Utils
 import qualified PatternRecogn.NeuronalNetworks as NN
 
 import Data.List( intercalate )
+import Control.Monad.Random
 import Data.Maybe
 
 
@@ -41,7 +42,7 @@ data NetworkParams
 
 testNeuronalNetworks ::
 	forall m .
-	MonadLog m =>
+	(MonadLog m, MonadRandom m) =>
 	TestFunctionParams
 	-> TestData -> m ()
 testNeuronalNetworks
@@ -105,7 +106,7 @@ testNeuronalNetworks
 										do
 											doLog $ concat ["iteration: ", show it]
 											showNWInfo nw
-									NN.adjustWeights learnRate trainingData nw
+									NN.adjustWeightsBatchWithRnd learnRate trainingData nw
 
 				cond :: NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m (Maybe StopReason)
 				cond x = withIterationCtxt $ \it previousVals ->
@@ -142,6 +143,7 @@ testNeuronalNetworks
 
 				showNWInfo network =
 					do
+						--doLog $ showNW network
 						let qualityTraining = testWithTrainingData network
 						doLog $ concat ["quality of classifying training data: ", show qualityTraining]
 						maybe (return ()) `flip` mTestData $ \(testData, expectedLabels) ->
@@ -163,6 +165,13 @@ testNeuronalNetworks
 						calcClassificationQuality
 							expectedLabels
 									testClasses
+
+showNW :: NN.ClassificationParam -> String
+showNW =
+	("network:\n" ++) .
+	intercalate "\n" . map show'
+	where
+		show' x = show x
 
 {-
 descriptionString
