@@ -11,9 +11,10 @@ module PatternRecogn.NeuronalNetworks(
 	classify,
 
 	-- low level api:
-	initialNetwork,
+	initialNetwork, initialNetworkWithRnd,
 	adjustWeightsBatch,
 	adjustWeightsBatchWithRnd,
+	adjustWeightsOnLine,
 	paramsDiff,
 	internalFromTrainingData,
 	internalFromBundledTrainingData,
@@ -28,7 +29,7 @@ import Control.Monad.Random
 import Control.Monad.Identity
 import Control.Monad.State.Strict
 import Data.Traversable( mapAccumL)
-import Data.List( intercalate )
+-- import Data.List( intercalate )
 
 
 -- |represents the whole network
@@ -120,6 +121,12 @@ trainNetwork dimensions learnRate sets =
 		initNW = initialNetwork inputDim dimensions
 		inputDim =
 			Lina.size $ fst $ head sets
+
+initialNetworkWithRnd :: MonadRandom m => Int -> NetworkDimensions -> m ClassificationParam
+initialNetworkWithRnd inputSize dimensions =
+	forM (networkMatrixDimensions inputSize dimensions) $
+	\(rowCount, colCount) ->
+		(rowCount><colCount) <$> getRandomRs (0,1)
 
 initialNetwork inputSize dimensions =
 	map (Lina.konst 0) $ networkMatrixDimensions inputSize dimensions

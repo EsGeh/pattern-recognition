@@ -77,8 +77,9 @@ testNeuronalNetworks
 				trainNetwork =
 					iterateWithCtxtM 1
 						(updateNW cond)
+						=<<
 						initNW
-				initNW = NN.initialNetwork inputDim dims
+				initNW = NN.initialNetworkWithRnd inputDim dims
 				inputDim :: Int
 				inputDim = Lina.size $ fst $ head trainingData
 

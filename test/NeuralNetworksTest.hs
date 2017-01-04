@@ -21,7 +21,6 @@ main =
 	handleErrors $
 	do
 
-		{-
 		doLog $ "-------------------------------------------"
 		doLog $ "testing with operator \"and\"..."
 		Test.testNeuronalNetworks
@@ -51,14 +50,13 @@ main =
 				}
 			}
 			(logicalOp_testInput (||))
-		-}
 
 		doLog $ "-------------------------------------------"
 		doLog $ "testing with operator \"xor\"..."
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
-				loggingFreq = 1,
-				maxIt = 10,
+				loggingFreq = 1000,
+				maxIt = 10000,
 				learnRate = 1,
 				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.0000001],
 				networkParams = Test.NetworkParams{
@@ -70,7 +68,6 @@ main =
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
-		{-
 		let
 			labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels
@@ -79,9 +76,9 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				maxIt = 1000,
+				maxIt = 10000,
 				learnRate = 1,
-				stopConds = [Test.StopIfConverges 0.01, Test.StopIfQualityReached 1],
+				stopConds = [Test.StopIfConverges 0.001, Test.StopIfQualityReached 1],
 				networkParams = Test.NetworkParams{
 					dims = [10],
 					outputInterpretation = (NN.outputInterpretationMaximum 10)
@@ -94,16 +91,15 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				maxIt = 1000,
+				maxIt = 10000,
 				learnRate = 1,
-				stopConds = [Test.StopIfConverges 0.01, Test.StopIfQualityReached 1],
+				stopConds = [Test.StopIfConverges 0.001, Test.StopIfQualityReached 1],
 				networkParams = Test.NetworkParams{
 					dims = [10,10],
 					outputInterpretation = (NN.outputInterpretationMaximum 10)
 				}
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
-		-}
 
 	where
 		handleErrors x =
