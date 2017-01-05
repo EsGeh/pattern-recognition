@@ -19,7 +19,6 @@ import Data.Maybe
 data TestFunctionParams
 	= TestFunctionParams {
 		loggingFreq :: Int,
-		--maxIt :: Int,
 		learnRate :: R,
 		stopConds :: [StopCond],
 		networkParams :: NetworkParams
@@ -113,23 +112,16 @@ testNeuronalNetworks
 				cond x = withIterationCtxt $ \it previousVals ->
 					cond' it previousVals x
 					where
-						cond' it (previousVal:_) lastVal =
-							{-
-							if not $ it < maxIt
-							then
-								return $ Just $ StopReason_MaxIt it
-							else
-							-}
-								fmap (
-									listToMaybe .
-									catMaybes
-								) $
-								temp
+						cond' it (previousVal:_) lastVal = return $
+							(
+								listToMaybe .
+								catMaybes
+							) $
+							temp
 							where
-								temp :: m [Maybe StopReason]
+								temp :: [Maybe StopReason]
 								temp =
-									mapM `flip` stopConds $ \stopCond ->
-										return $
+									map `flip` stopConds $ \stopCond ->
 										case stopCond of
 											StopAfterMaxIt maxIt ->
 												if not $ it < maxIt then return $ StopReason_MaxIt it else Nothing
@@ -141,9 +133,7 @@ testNeuronalNetworks
 											StopIfQualityReached quality ->
 												if (testWithTrainingData lastVal >= quality)
 												then
-													do
-														--doLog $ "cond quali: " ++ show (testWithTrainingData lastVal)
-														return $ StopReason_QualityReached quality it
+													return $ StopReason_QualityReached quality it
 												else Nothing
 						cond' _ _ _ = return $ Nothing
 
