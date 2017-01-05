@@ -29,7 +29,6 @@ import Control.Monad.Random
 import Control.Monad.Identity
 import Control.Monad.State.Strict
 import Data.Traversable( mapAccumL)
--- import Data.List( intercalate )
 
 
 -- |represents the whole network
@@ -281,15 +280,6 @@ internalFromBundledTrainingData OutputInterpretation{..} =
 	map (mapToSnd $ labelToOutput)
 	.
 	fromBundled
-{-
-	join
-	.
-	map (uncurry toInternal)
-	where
-		toInternal :: Matrix -> Label -> TrainingDataInternal
-		toInternal set label =
-			Lina.toRows set `zip` repeat (labelToOutput label)
--}
 
 extendVec x = Lina.fromList $ Lina.toList x ++ [1]
 

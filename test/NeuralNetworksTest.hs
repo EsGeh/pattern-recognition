@@ -26,7 +26,6 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
-				maxIt = 1000,
 				learnRate = 0.1,
 				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.001],
 				networkParams = Test.NetworkParams{
@@ -41,7 +40,6 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
-				maxIt = 1000,
 				learnRate = 0.1,
 				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.001],
 				networkParams = Test.NetworkParams{
@@ -56,14 +54,12 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 1000,
-				maxIt = 10000,
 				learnRate = 1,
 				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.0000001],
 				networkParams = Test.NetworkParams{
 					dims = [2,1],
 					outputInterpretation =
 						NN.outputInterpretationSingleOutput
-						--(NN.outputInterpretationMaximum 2)
 				}
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
@@ -76,7 +72,6 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				maxIt = 10000,
 				learnRate = 1,
 				stopConds = [Test.StopIfConverges 0.001, Test.StopIfQualityReached 1],
 				networkParams = Test.NetworkParams{
@@ -91,7 +86,6 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				maxIt = 10000,
 				learnRate = 1,
 				stopConds = [Test.StopIfConverges 0.001, Test.StopIfQualityReached 1],
 				networkParams = Test.NetworkParams{
@@ -110,12 +104,11 @@ main =
 					return
 					valOrErr
 
+{-
 startToClassifyInfoStr l =
 	concat $
 			[ "----------------------------------------------\n"
 			, "classifying to labels ", intercalate "," $ map (show . snd) l
 			, " in files ", intercalate "," $ map (show . fst) l
 			]
-
--- (helpers: )
------------------------------------------------------------------
+-}

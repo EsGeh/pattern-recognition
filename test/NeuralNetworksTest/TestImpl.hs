@@ -19,14 +19,15 @@ import Data.Maybe
 data TestFunctionParams
 	= TestFunctionParams {
 		loggingFreq :: Int,
-		maxIt :: Int,
+		--maxIt :: Int,
 		learnRate :: R,
 		stopConds :: [StopCond],
 		networkParams :: NetworkParams
 	}
 
 data StopCond
-	= StopIfConverges R
+	= StopAfterMaxIt Int
+	| StopIfConverges R
 	| StopIfQualityReached R
 
 data StopReason
@@ -76,7 +77,7 @@ testNeuronalNetworks
 				trainNetwork :: m (NN.ClassificationParam, StopReason)
 				trainNetwork =
 					iterateWithCtxtM 1
-						(updateNW cond)
+						updateNW
 						=<<
 						initNW
 				initNW = NN.initialNetworkWithRnd inputDim dims
@@ -84,12 +85,11 @@ testNeuronalNetworks
 				inputDim = Lina.size $ fst $ head trainingData
 
 				updateNW :: 
-					(NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m (Maybe StopReason))
-					-> NN.ClassificationParam
+					NN.ClassificationParam
 					-> IterationMonadT [NN.ClassificationParam] m (Either (NN.ClassificationParam, StopReason) NN.ClassificationParam)
-				updateNW cond' network =
+				updateNW network =
 					do
-					continue <- cond' network
+					continue <- cond network
 					case continue of
 						Nothing ->
 							do
@@ -114,10 +114,12 @@ testNeuronalNetworks
 					cond' it previousVals x
 					where
 						cond' it (previousVal:_) lastVal =
+							{-
 							if not $ it < maxIt
 							then
 								return $ Just $ StopReason_MaxIt it
 							else
+							-}
 								fmap (
 									listToMaybe .
 									catMaybes
@@ -127,19 +129,22 @@ testNeuronalNetworks
 								temp :: m [Maybe StopReason]
 								temp =
 									mapM `flip` stopConds $ \stopCond ->
+										return $
 										case stopCond of
+											StopAfterMaxIt maxIt ->
+												if not $ it < maxIt then return $ StopReason_MaxIt it else Nothing
 											StopIfConverges delta ->
 												if (NN.paramsDiff lastVal previousVal <= delta)
 												then
-													return $ return $ StopReason_Converged delta it
-												else return Nothing
+													return $ StopReason_Converged delta it
+												else Nothing
 											StopIfQualityReached quality ->
 												if (testWithTrainingData lastVal >= quality)
 												then
 													do
 														--doLog $ "cond quali: " ++ show (testWithTrainingData lastVal)
-														return $ return $ StopReason_QualityReached quality it
-												else return $ Nothing
+														return $ StopReason_QualityReached quality it
+												else Nothing
 						cond' _ _ _ = return $ Nothing
 
 				showNWInfo network =
@@ -165,7 +170,7 @@ testNeuronalNetworks
 					in
 						calcClassificationQuality
 							expectedLabels
-									testClasses
+							testClasses
 
 showNW :: NN.ClassificationParam -> String
 showNW =
@@ -173,32 +178,3 @@ showNW =
 	intercalate "\n" . map show'
 	where
 		show' x = show x
-
-{-
-descriptionString
-	set1 set2
-	param 
-	projectionVec projectedClassificationParam
-	inputData classified result
-	=
-	unlines $
-	[ concat $ ["set1 size:", show $ size set1]
-	, concat $ ["set2 size:", show $ size set2]
-	, Gauss.infoStringForParam param
-	, concat $ ["projectionVec size:", show $ size projectionVec]
-	, concat $ ["projected clusters: ----------------------------"]
-	, infoStringForParam_1D projectedClassificationParam
-	, concat $ ["inputData size:", show $ size inputData]
-	, concat $ ["result: --------------------"]
-	, concat $ ["classification quality:", show $ result]
-	]
-
-infoStringForParam_1D :: Gauss.ClassificationParam -> String
-infoStringForParam_1D Gauss.ClassificationParam{..} =
-	intercalate "\n" $
-	[ concat $ ["min1:", show $ min1]
-	, concat $ ["min2:", show $ min2 ]
-	, concat $ ["cov1:", show $ covariance1 ]
-	, concat $ ["cov2:", show $ covariance2 ]
-	]
--}
