@@ -27,10 +27,10 @@ main =
 			Test.TestFunctionParams{
 				loggingFreq = 0,
 				learnRate = 0.1,
-				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.001],
-				networkParams = Test.NetworkParams{
-					dims = [2],
-					outputInterpretation = (NN.outputInterpretationMaximum 2)
+				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
+				networkParams = NN.NetworkParams{
+					NN.dims = [2],
+					NN.outputInterpretation = (NN.outputInterpretationMaximum 2)
 				}
 			}
 			(logicalOp_testInput (&&))
@@ -41,10 +41,10 @@ main =
 			Test.TestFunctionParams{
 				loggingFreq = 0,
 				learnRate = 0.1,
-				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.001],
-				networkParams = Test.NetworkParams{
-					dims = [2],
-					outputInterpretation = (NN.outputInterpretationMaximum 2)
+				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
+				networkParams = NN.NetworkParams{
+					NN.dims = [2],
+					NN.outputInterpretation = (NN.outputInterpretationMaximum 2)
 				}
 			}
 			(logicalOp_testInput (||))
@@ -55,10 +55,10 @@ main =
 			Test.TestFunctionParams{
 				loggingFreq = 1000,
 				learnRate = 1,
-				stopConds = [Test.StopIfQualityReached 1, Test.StopIfConverges 0.0000001],
-				networkParams = Test.NetworkParams{
-					dims = [2,1],
-					outputInterpretation =
+				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.0000001],
+				networkParams = NN.NetworkParams{
+					NN.dims = [2,1],
+					NN.outputInterpretation =
 						NN.outputInterpretationSingleOutput
 				}
 			}
@@ -73,10 +73,10 @@ main =
 			Test.TestFunctionParams{
 				loggingFreq = 100,
 				learnRate = 1,
-				stopConds = [Test.StopIfConverges 0.001, Test.StopIfQualityReached 1],
-				networkParams = Test.NetworkParams{
-					dims = [10],
-					outputInterpretation = (NN.outputInterpretationMaximum 10)
+				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
+				networkParams = NN.NetworkParams{
+					NN.dims = [10],
+					NN.outputInterpretation = (NN.outputInterpretationMaximum 10)
 				}
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
@@ -87,10 +87,10 @@ main =
 			Test.TestFunctionParams{
 				loggingFreq = 100,
 				learnRate = 1,
-				stopConds = [Test.StopIfConverges 0.001, Test.StopIfQualityReached 1],
-				networkParams = Test.NetworkParams{
-					dims = [10,10],
-					outputInterpretation = (NN.outputInterpretationMaximum 10)
+				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
+				networkParams = NN.NetworkParams{
+					NN.dims = [10,10],
+					NN.outputInterpretation = (NN.outputInterpretationMaximum 10)
 				}
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))

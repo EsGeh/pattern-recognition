@@ -3,11 +3,13 @@
 {-# LANGUAGE RecordWildCards #-}
 module PatternRecogn.NeuronalNetworks(
 	ClassificationParam,
+	NetworkParams(..),
 	NetworkDimensions,
+	StopCond(..), StopReason(..),
 	OutputInterpretation(..), outputInterpretationMaximum, outputInterpretationSingleOutput,
 
 	trainNetwork,
-	calcClassificationParams,
+	--calcClassificationParams,
 	classify,
 
 	-- low level api:
@@ -29,6 +31,7 @@ import Control.Monad.Random
 import Control.Monad.Identity
 import Control.Monad.State.Strict
 import Data.Traversable( mapAccumL)
+import Data.Maybe
 
 
 -- |represents the whole network
@@ -36,6 +39,12 @@ import Data.Traversable( mapAccumL)
 -- |	columns: weights for one perceptron
 type ClassificationParam
 	= [Matrix]
+
+data NetworkParams
+	= NetworkParams {
+		dims :: NetworkDimensions,
+		outputInterpretation :: OutputInterpretation
+	}
 
 type NetworkDimensions = [Int]
 
@@ -47,6 +56,16 @@ data OutputInterpretation =
 		outputToLabel :: Vector -> Label,
 		labelToOutput :: Label -> Vector
 	}
+
+data StopCond
+	= StopAfterMaxIt Int
+	| StopIfConverges R
+	| StopIfQualityReached R
+
+data StopReason
+	= StopReason_MaxIt Int
+	| StopReason_Converged R Int
+	| StopReason_QualityReached R Int
 
 -- | 0 <-> (1,0,0,...); 3 <-> (0,0,0,1,0,...)
 outputInterpretationMaximum count =
@@ -76,6 +95,7 @@ paramsDiff newWeights weights =
 	map (sum . join . toLists . cmap abs) $
 	zipWith (-) newWeights weights
 
+{-
 calcClassificationParams ::
 	MonadLog m =>
 	OutputInterpretation -> R -> NetworkDimensions -> TrainingDataBundled -> m ClassificationParam
@@ -83,6 +103,7 @@ calcClassificationParams outputInterpretation learnRate dims =
 	trainNetwork dims learnRate
 	.
 	internalFromBundledTrainingData outputInterpretation
+-}
 
 classify :: OutputInterpretation -> ClassificationParam -> Matrix -> VectorOf Label
 classify OutputInterpretation{..} param input =
@@ -97,8 +118,72 @@ extendedClassification param input =
 	Lina.toRows $
 	input
 
+trainNetwork ::
+	forall m .
+	(MonadLog m) =>
+	NetworkParams
+	-> [StopCond]
+	-> (ClassificationParam -> R)
+	-> (ClassificationParam -> IterationMonadT [ClassificationParam] m ClassificationParam)
+	-> ClassificationParam
+	-> m (ClassificationParam, StopReason)
+trainNetwork NetworkParams{..} stopConds testWithTrainingData adjustWeights initNW =
+	iterateWithCtxtM 1 updateNW
+	$
+	initNW
+	where
+
+		updateNW :: 
+			ClassificationParam
+			-> IterationMonadT [ClassificationParam] m (Either (ClassificationParam, StopReason) ClassificationParam)
+		updateNW network =
+			do
+			continue <- cond network
+			case continue of
+				Nothing ->
+					do
+						ret <- updateNW' network
+						return $ Right ret
+				Just stop -> return $ Left (network, stop)
+			where
+				updateNW' :: 
+					ClassificationParam
+					-> IterationMonadT [ClassificationParam] m ClassificationParam
+				updateNW' nw =
+					adjustWeights nw
+
+		cond :: ClassificationParam -> IterationMonadT [ClassificationParam] m (Maybe StopReason)
+		cond x = withIterationCtxt $ \it previousVals ->
+			cond' it previousVals x
+			where
+				cond' it (previousVal:_) lastVal = return $
+					(
+						listToMaybe .
+						catMaybes
+					) $
+					temp
+					where
+						temp :: [Maybe StopReason]
+						temp =
+							map `flip` stopConds $ \stopCond ->
+								case stopCond of
+									StopAfterMaxIt maxIt ->
+										if not $ it < maxIt then return $ StopReason_MaxIt it else Nothing
+									StopIfConverges delta ->
+										if (paramsDiff lastVal previousVal <= delta)
+										then
+											return $ StopReason_Converged delta it
+										else Nothing
+									StopIfQualityReached quality ->
+										if (testWithTrainingData lastVal >= quality)
+										then
+											return $ StopReason_QualityReached quality it
+										else Nothing
+				cond' _ _ _ = return $ Nothing
+
 ---
 
+{-
 trainNetwork ::
 	forall m .
 	MonadLog m =>
@@ -120,6 +205,7 @@ trainNetwork dimensions learnRate sets =
 		initNW = initialNetwork inputDim dimensions
 		inputDim =
 			Lina.size $ fst $ head sets
+-}
 
 initialNetworkWithRnd :: MonadRandom m => Int -> NetworkDimensions -> m ClassificationParam
 initialNetworkWithRnd inputSize dimensions =
