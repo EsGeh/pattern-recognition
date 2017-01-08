@@ -4,13 +4,8 @@
 module NeuralNetworksTest.TestImpl(
 	testNeuronalNetworks,
 	TestFunctionParams(..),
-	{-
-	NN.StopCond(..),
-	NN.StopReason(..),
-	-}
 ) where
 
-import Utils
 import Types
 import PatternRecogn.Types hiding( cond )
 import PatternRecogn.Lina as Lina hiding( cond )
@@ -90,7 +85,6 @@ testNeuronalNetworks
 
 		adjustWeights :: NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m NN.ClassificationParam
 		adjustWeights nw =
-			-- (showNWInfo nw >>) $
 			withIterationCtxt $ \it _ ->
 				do
 					when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
@@ -98,6 +92,7 @@ testNeuronalNetworks
 							doLog $ concat ["iteration: ", show it]
 							showNWInfo nw
 					NN.adjustWeightsBatchWithRnd learnRate trainingData nw
+
 		initNW = NN.initialNetworkWithRnd inputDim dims
 		inputDim :: Int
 		inputDim = Lina.size $ fst $ head trainingData

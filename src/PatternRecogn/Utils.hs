@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module PatternRecogn.Utils where
 
---import PatternRecogn.Types hiding( cond )
+import PatternRecogn.Types.Types( Label )
 import PatternRecogn.Lina as Lina hiding( cond )
 
 import qualified Data.Vector as Vec
@@ -9,6 +9,16 @@ import Control.Monad.State.Strict
 import Control.Monad.Reader
 import Data.List
 
+
+twice a = (a,a)
+
+calcClassificationQuality :: VectorOf Label -> VectorOf Label -> Double
+calcClassificationQuality expected res =
+	(/ fromIntegral (size res)) $
+	sum $
+	map (\x -> if x/=0 then 0 else 1) $
+	toList $
+	expected - res
 
 iterateWhileM_withCtxt ::
 	forall a m .

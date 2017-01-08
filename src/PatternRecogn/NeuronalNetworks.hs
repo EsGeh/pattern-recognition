@@ -8,11 +8,12 @@ module PatternRecogn.NeuronalNetworks(
 	StopCond(..), StopReason(..),
 	OutputInterpretation(..), outputInterpretationMaximum, outputInterpretationSingleOutput,
 
-	trainNetwork,
-	--calcClassificationParams,
+	calcClassificationParams,
 	classify,
 
 	-- low level api:
+	TrainingDataInternal,
+	trainNetwork,
 	initialNetwork, initialNetworkWithRnd,
 	adjustWeightsBatch,
 	adjustWeightsBatchWithRnd,
@@ -20,7 +21,6 @@ module PatternRecogn.NeuronalNetworks(
 	paramsDiff,
 	internalFromTrainingData,
 	internalFromBundledTrainingData,
-	TrainingDataInternal,
 ) where
 
 import PatternRecogn.Lina as Lina hiding( cond )
@@ -33,6 +33,10 @@ import Control.Monad.State.Strict
 import Data.Traversable( mapAccumL)
 import Data.Maybe
 
+
+-----------------------------------------------------------------
+-- Types:
+-----------------------------------------------------------------
 
 -- |represents the whole network
 -- |list of weight-matrix for every layer
@@ -95,15 +99,38 @@ paramsDiff newWeights weights =
 	map (sum . join . toLists . cmap abs) $
 	zipWith (-) newWeights weights
 
-{-
+
+-----------------------------------------------------------------
+-- high level api:
+-----------------------------------------------------------------
+
 calcClassificationParams ::
-	MonadLog m =>
-	OutputInterpretation -> R -> NetworkDimensions -> TrainingDataBundled -> m ClassificationParam
-calcClassificationParams outputInterpretation learnRate dims =
-	trainNetwork dims learnRate
-	.
-	internalFromBundledTrainingData outputInterpretation
--}
+	(MonadLog m, MonadRandom m) =>
+	R -> NetworkParams -> TrainingDataBundled -> m ClassificationParam
+calcClassificationParams learnRate networkParams@NetworkParams{..} trainingData =
+	fmap fst $
+	trainNetwork
+		networkParams
+		[StopIfConverges 0.001]
+		testWithTrainingData
+		(lift . adjustWeightsBatchWithRnd learnRate trainingDataInternal)
+		=<<
+		initialNetworkWithRnd inputDim dims
+	where
+		trainingDataInternal = internalFromBundledTrainingData outputInterpretation trainingData
+		testWithTrainingData nw =
+			testNW nw
+				(Lina.fromRows $ map fst $ trainingDataInternal)
+				(Lina.fromList $ map (outputToLabel outputInterpretation . snd) $ trainingDataInternal)
+		testNW :: ClassificationParam -> Lina.Matrix -> VectorOf Label -> R
+		testNW nw inputData expectedLabels =
+			let
+				testClasses = classify outputInterpretation nw $ inputData
+			in
+				calcClassificationQuality
+					expectedLabels
+					testClasses
+		inputDim = Lina.size $ fst $ head $ trainingDataInternal
 
 classify :: OutputInterpretation -> ClassificationParam -> Matrix -> VectorOf Label
 classify OutputInterpretation{..} param input =
@@ -117,6 +144,11 @@ extendedClassification param input =
 	map (feedForward param) $
 	Lina.toRows $
 	input
+
+
+-----------------------------------------------------------------
+-- low level api:
+-----------------------------------------------------------------
 
 trainNetwork ::
 	forall m .
@@ -180,32 +212,6 @@ trainNetwork NetworkParams{..} stopConds testWithTrainingData adjustWeights init
 											return $ StopReason_QualityReached quality it
 										else Nothing
 				cond' _ _ _ = return $ Nothing
-
----
-
-{-
-trainNetwork ::
-	forall m .
-	MonadLog m =>
-	NetworkDimensions
-	-> R
-	-> TrainingDataInternal -> m ClassificationParam
-trainNetwork dimensions learnRate sets =
-	do
-		doLog $ "initialNetwork dimensions: " ++ show (map Lina.size initNW)
-		iterateWhileM_withCtxt 1 cond
-			(lift . adjustWeightsBatch learnRate sets)
-			initNW
-	where
-		cond weights = withIterationCtxt $ \it (prevWeights:_) ->
-			return $
-			it < 10000
-			&&
-			paramsDiff weights prevWeights >= 0.1
-		initNW = initialNetwork inputDim dimensions
-		inputDim =
-			Lina.size $ fst $ head sets
--}
 
 initialNetworkWithRnd :: MonadRandom m => Int -> NetworkDimensions -> m ClassificationParam
 initialNetworkWithRnd inputSize dimensions =
@@ -338,8 +344,6 @@ backPropagate
 			\(delta, output) ->
 				Lina.tr (delta `Lina.outer` extendVec output)
 
-twice a = (a,a)
-
 -- |returns the temporary output for every stage of the nw: input = output^0, output^1, .., output^depth = output
 feedForward ::
 	ClassificationParam -> Vector
@@ -356,8 +360,10 @@ feedForward_oneStep weights input =
 	Lina.cmap sigmoid $
 	extendVec input <# weights
 
+
+-----------------------------------------------------------------
 -- helpers
----------------------------------------------
+-----------------------------------------------------------------
 
 internalFromTrainingData OutputInterpretation{..} =
 	map (mapToSnd $ labelToOutput)

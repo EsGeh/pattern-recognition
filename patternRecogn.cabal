@@ -26,6 +26,8 @@ library
   exposed-modules:
     PatternRecogn
     , PatternRecogn.Types
+    , PatternRecogn.Types.Types
+    , PatternRecogn.Types.Conversions
     , PatternRecogn.Lina
     , PatternRecogn.Utils
     -- Gauß classification:

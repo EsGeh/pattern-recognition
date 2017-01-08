@@ -9,7 +9,7 @@ import NeuralNetworksTest.TestImpl as Test
 import qualified PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Types
 
-import Data.List( intercalate )
+--import Data.List( intercalate )
 
 
 -----------------------------------------------------------------
