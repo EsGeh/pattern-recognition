@@ -14,7 +14,6 @@ import PatternRecogn.Utils
 import qualified PatternRecogn.NeuronalNetworks as NN
 
 import Data.List( intercalate )
-import Control.Monad.Reader
 import Control.Monad.Random
 
 
@@ -84,16 +83,17 @@ testNeuronalNetworks
 					in
 						doLog $ concat ["quality of classifying test data: ", show qualityTestData]
 
-		adjustWeights :: NN.NetworkTrainingData -> IterationMonadT [NN.NetworkTrainingData] m NN.NetworkTrainingData
-		adjustWeights trainingState@NN.NetworkTrainingData{ weights = nw } =
-			withIterationCtxt $ \it lastValues -> 
+		adjustWeights :: NN.ClassificationParam -> NN.TrainingMonadT m NN.NetworkTrainingData
+		adjustWeights nw =
+			NN.askIteration >>= \it ->
+			--NN.askLastVals >>= \lastValues -> 
 				do
 					when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
 						do
 							doLog $ concat ["iteration: ", show it]
 							showNWInfo nw
-					runReaderT `flip` lastValues $
-						NN.adjustWeightsBatchWithRnd learningParams trainingData trainingState
+					--runReaderT `flip` lastValues $
+					NN.adjustWeightsBatchWithRnd learningParams trainingData nw
 
 		initNW = NN.initialNetworkWithRnd inputDim dims
 		inputDim :: Int

@@ -41,6 +41,8 @@ library
     , PatternRecogn.Perceptron
 		-- neuronal networks:
     , PatternRecogn.NeuronalNetworks
+    , PatternRecogn.NeuronalNetworks.TrainingMonad
+    , PatternRecogn.NeuronalNetworks.Types
   other-modules:
   ghc-options:
     -Wall -Wno-missing-signatures -Wno-tabs

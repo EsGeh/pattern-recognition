@@ -1,10 +1,11 @@
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RecordWildCards #-}
 module PatternRecogn.NeuronalNetworks(
 	ClassificationParam,
 	NetworkParams(..),
 	LearningParams(..), defLearningParams,
+	TrainingMonadT(), askIteration, askLastVals, askLastGradients,
 	NetworkDimensions,
 	StopCond(..), StopReason(..),
 	OutputInterpretation(..), outputInterpretationMaximum, outputInterpretationSingleOutput,
@@ -19,97 +20,23 @@ module PatternRecogn.NeuronalNetworks(
 	initialNetwork, initialNetworkWithRnd,
 	adjustWeightsBatch,
 	adjustWeightsBatchWithRnd,
-	adjustWeightsOnLine,
+	--adjustWeightsOnLine,
 	paramsDiff,
 	internalFromTrainingData,
 	internalFromBundledTrainingData,
 ) where
 
+import PatternRecogn.NeuronalNetworks.TrainingMonad
+import PatternRecogn.NeuronalNetworks.Types
 import PatternRecogn.Lina as Lina hiding( cond )
 import PatternRecogn.Types hiding( cond )
 import PatternRecogn.Utils
 
 import Control.Monad.Random
-import Control.Monad.Reader
-import Data.Traversable( mapAccumL)
+import Control.Monad.Trans
+import Data.Traversable( mapAccumL, forM )
 import Data.Maybe
 
-
------------------------------------------------------------------
--- Types:
------------------------------------------------------------------
-
--- |represents the whole network
--- |list of weight-matrix for every layer
--- |	columns: weights for one perceptron
-type ClassificationParam
-	= [Matrix]
-
-data NetworkParams
-	= NetworkParams {
-		dims :: NetworkDimensions,
-		outputInterpretation :: OutputInterpretation
-	}
-
-data LearningParams
-	= LearningParams {
-		learnRate :: R,
-		dampingFactor :: R
-	}
-defLearningParams =
-	LearningParams {
-		learnRate = 0.1,
-		dampingFactor = 0
-	}
-
-type NetworkDimensions = [Int]
-
-type TrainingDataInternal =
-	[(Vector,Vector)] -- sample, expected output
-
-data OutputInterpretation =
-	OutputInterpretation {
-		outputToLabel :: Vector -> Label,
-		labelToOutput :: Label -> Vector
-	}
-
-data StopCond
-	= StopAfterMaxIt Int
-	| StopIfConverges R
-	| StopIfQualityReached R
-
-data StopReason
-	= StopReason_MaxIt Int
-	| StopReason_Converged R Int
-	| StopReason_QualityReached R Int
-
--- | 0 <-> (1,0,0,...); 3 <-> (0,0,0,1,0,...)
-outputInterpretationMaximum count =
-	OutputInterpretation{
-		outputToLabel =
-			fromIntegral . Lina.maxIndex,
-		labelToOutput =
-			\lbl -> Lina.fromList $
-				setElemAt (fromIntegral lbl) 1 $ replicate count 0
-	}
-
-outputInterpretationSingleOutput =
-	OutputInterpretation{
-		outputToLabel = \x ->
-			case Lina.toList x of
-				[output] ->
-					round output
-					--if output >= 0.5 then 1 else 0
-				_ -> error "outputInterpretation: error!",
-		labelToOutput =
-			\lbl -> Lina.fromList [fromIntegral lbl]
-	}
-
--- | sums up element wise differences
-paramsDiff newWeights weights =
-	sum $
-	map (sum . join . toLists . cmap abs) $
-	zipWith (-) newWeights weights
 
 
 -----------------------------------------------------------------
@@ -125,7 +52,7 @@ calcClassificationParams trainingParams networkParams@NetworkParams{..} training
 		networkParams
 		[StopIfConverges 0.001]
 		testWithTrainingData
-		(\x -> withIterationCtxt $ \_ lastValues -> runReaderT `flip` lastValues $ adjustWeightsBatchWithRnd trainingParams trainingDataInternal x)
+		(adjustWeightsBatchWithRnd trainingParams trainingDataInternal)
 		=<<
 		initialNetworkWithRnd inputDim dims
 	where
@@ -162,23 +89,13 @@ extendedClassification param input =
 -- low level api:
 -----------------------------------------------------------------
 
-data NetworkTrainingData =
-	NetworkTrainingData {
-		weights :: ClassificationParam,
-		gradients :: [Matrix]
-	}
-
-initialTrainingData weights =
-	NetworkTrainingData weights $
-	map (\x -> Lina.konst 0 $ Lina.size x) weights
-
 trainNetwork ::
 	forall m .
 	(MonadLog m) =>
 	NetworkParams
 	-> [StopCond]
 	-> (ClassificationParam -> R)
-	-> (NetworkTrainingData -> IterationMonadT [NetworkTrainingData] m NetworkTrainingData)
+	-> (ClassificationParam -> TrainingMonadT m NetworkTrainingData)
 	-> ClassificationParam
 	-> m (ClassificationParam, StopReason)
 trainNetwork NetworkParams{..} stopConds testWithTrainingData adjustWeights initNW =
@@ -190,19 +107,19 @@ trainNetwork NetworkParams{..} stopConds testWithTrainingData adjustWeights init
 		updateNW :: 
 			NetworkTrainingData
 			-> IterationMonadT [NetworkTrainingData] m (Either (ClassificationParam, StopReason) NetworkTrainingData)
-		updateNW networkTrainingData@NetworkTrainingData{ weights=network } =
+		updateNW networkTrainingData@NetworkTrainingData{ nwData_weights=network } =
 			do
 			continue <- cond network
 			case continue of
 				Nothing ->
 					do
-						ret <- adjustWeights networkTrainingData
+						ret <- liftToTrainingMonad adjustWeights $ networkTrainingData
 						return $ Right ret
 				Just stop -> return $ Left (network, stop)
 
 		cond :: ClassificationParam -> IterationMonadT [NetworkTrainingData] m (Maybe StopReason)
 		cond x = withIterationCtxt $ \it previousVals ->
-			cond' it (map weights previousVals) x
+			cond' it (map nwData_weights previousVals) x
 			where
 				cond' it (previousVal:_) lastVal = return $
 					(
@@ -243,7 +160,7 @@ adjustWeightsBatchWithRnd ::
 	(MonadLog m, MonadRandom m) =>
 	LearningParams
 	-> TrainingDataInternal ->
-	NetworkTrainingData -> ReaderT [NetworkTrainingData] m NetworkTrainingData
+	ClassificationParam -> TrainingMonadT m NetworkTrainingData
 adjustWeightsBatchWithRnd trainingParams trainingData weights =
 	do
 		randomVals <- lift $ (getRandomRs (0,1) :: m [R])
@@ -254,7 +171,7 @@ adjustWeightsBatch ::
 	MonadLog m =>
 	LearningParams
 	-> TrainingDataInternal ->
-	NetworkTrainingData -> ReaderT [NetworkTrainingData] m NetworkTrainingData
+	ClassificationParam -> TrainingMonadT m NetworkTrainingData
 adjustWeightsBatch =
 	adjustWeightsBatch_intern (repeat 0)
 
@@ -264,9 +181,11 @@ adjustWeightsBatch_intern ::
 	[R]
 	-> LearningParams
 	-> TrainingDataInternal ->
-	NetworkTrainingData -> ReaderT [NetworkTrainingData] m NetworkTrainingData
-adjustWeightsBatch_intern randomVec trainingParams trainingData NetworkTrainingData{ weights = weights, gradients = lastGradients } =
-	{- ask >>= \lastValues -> -} lift $
+	ClassificationParam -> TrainingMonadT m NetworkTrainingData
+adjustWeightsBatch_intern randomVec trainingParams trainingData weights =
+	--askLastVals >>= \lastValues ->
+	askLastGradients >>= \(lastGradients:_) ->
+	lift $
 	do
 		(gradients :: [Matrix]) <-
 			combineGradients
@@ -276,8 +195,8 @@ adjustWeightsBatch_intern randomVec trainingParams trainingData NetworkTrainingD
 			applyCorrections trainingParams lastGradients gradients weights
 		return $
 			NetworkTrainingData {
-				weights = newWeights,
-				gradients = gradients
+				nwData_weights = newWeights,
+				nwData_gradients = gradients
 			}
 	where
 		combineGradients gradientsForEachSample =
@@ -285,6 +204,7 @@ adjustWeightsBatch_intern randomVec trainingParams trainingData NetworkTrainingD
 			map (\(ws,rnd) -> (rnd `Lina.scale`) <$> ws) $
 			gradientsForEachSample `zip` randomVec
 
+{-
 adjustWeightsOnLine ::
 	forall m .
 	MonadLog m =>
@@ -296,14 +216,15 @@ adjustWeightsOnLine trainingParams =
 	map f
 	where
 		f :: (Vector, Vector) -> NetworkTrainingData -> m NetworkTrainingData
-		f sample NetworkTrainingData{ weights=weights, gradients=lastGradients } =
+		f sample NetworkTrainingData{ nwData_weights=weights, nwData_gradients=lastGradients } =
 			do
 				gradients <- gradientsFromSample sample weights
 				return $
 					NetworkTrainingData {
-						weights = applyCorrections trainingParams lastGradients gradients weights,
-						gradients = gradients
+						nwData_weights = applyCorrections trainingParams lastGradients gradients weights,
+						nwData_gradients = gradients
 					}
+-}
 
 applyCorrections LearningParams{..} lastGradients gradients weights =
 	map `flip` (zip3 weights gradients lastGradients) $ \(w, gradient, lastGradient) ->
