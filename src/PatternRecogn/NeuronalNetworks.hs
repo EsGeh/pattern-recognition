@@ -251,16 +251,16 @@ adjustWeightsBatch_intern ::
 	ClassificationParam -> m ClassificationParam
 adjustWeightsBatch_intern randomVec learnRate trainingData weights =
 	do
-		(corrections :: [Matrix]) <-
-			combineCorrections
+		(gradients :: [Matrix]) <-
+			combineGradients
 			<$>
-			(mapM (correctionsFromSample `flip` weights) trainingData :: m [[Matrix]])
-		return $ applyCorrections learnRate corrections weights
+			(mapM (gradientsFromSample `flip` weights) trainingData :: m [[Matrix]])
+		return $ applyCorrections learnRate gradients weights
 	where
-		combineCorrections correctionsForEachSample =
+		combineGradients gradientsForEachSample =
 			foldr1 (zipWith (+)) $
 			map (\(ws,rnd) -> (rnd `Lina.scale`) <$> ws) $
-			correctionsForEachSample `zip` randomVec
+			gradientsForEachSample `zip` randomVec
 
 adjustWeightsOnLine ::
 	forall m .
@@ -275,17 +275,18 @@ adjustWeightsOnLine learnRate =
 		f :: (Vector, Vector) -> ClassificationParam -> m ClassificationParam
 		f sample weights =
 			do
-				weightUpdates <- correctionsFromSample sample weights
-				return $ applyCorrections learnRate weightUpdates weights
+				gradients <- gradientsFromSample sample weights
+				return $ applyCorrections learnRate gradients weights
 
-applyCorrections learnRate weightsDeltas weights =
-	map `flip` (weights `zip` weightsDeltas) $ \(w, delta) -> w - learnRate `Lina.scale` delta
+applyCorrections learnRate gradients weights =
+	map `flip` (weights `zip` gradients) $ \(w, gradient) ->
+		w - learnRate `Lina.scale` gradient
 
-correctionsFromSample ::
+gradientsFromSample ::
 	MonadLog m =>
 	(Vector, Vector)
 	-> ClassificationParam -> m [Matrix]
-correctionsFromSample (input, expectedOutput) weights =
+gradientsFromSample (input, expectedOutput) weights =
 	do
 		let
 			outputs = reverse $ feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
@@ -295,7 +296,7 @@ correctionsFromSample (input, expectedOutput) weights =
 				outputs
 			(lastOutput:_) = outputs
 			err = lastOutput - expectedOutput
-		corrections <- backPropagate outputs derivatives err weights
+		gradients <- backPropagate outputs derivatives err weights
 		{-
 		doLog $ "--------------------"
 		doLog $ concat ["outputs: ", intercalate "\n" $ map show outputs]
@@ -303,7 +304,7 @@ correctionsFromSample (input, expectedOutput) weights =
 		doLog $ concat ["err: ", show err]
 		doLog $ concat ["corrections: ", intercalate "\n" $ map show corrections]
 		-}
-		return corrections
+		return gradients
 
 backPropagate ::
 	MonadLog m =>
@@ -311,7 +312,7 @@ backPropagate ::
 	-> [Vector] -- derivatives (output to input)
 	-> Vector -- error
 	-> ClassificationParam -- network weights (output to input)
-	-> m [Matrix] -- derivatives
+	-> m [Matrix] -- gradients for every layer
 backPropagate
 		outputs
 		derivatives
