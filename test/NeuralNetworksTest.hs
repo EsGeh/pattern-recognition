@@ -6,7 +6,8 @@ import qualified LoadTestData as Load
 import Types
 import NeuralNetworksTest.TestImpl as Test
 
-import qualified PatternRecogn.NeuronalNetworks as NN
+--import qualified PatternRecogn.NeuronalNetworks as NN
+import PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Types
 
 --import Data.List( intercalate )
@@ -26,7 +27,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
-				learnRate = 0.1,
+				learningParams = defLearningParams{ learnRate = 0.1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2],
@@ -40,7 +41,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
-				learnRate = 0.1,
+				learningParams = defLearningParams{ learnRate = 0.1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2],
@@ -54,7 +55,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 1000,
-				learnRate = 1,
+				learningParams = defLearningParams{ learnRate = 1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.0000001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2,1],
@@ -72,7 +73,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				learnRate = 1,
+				learningParams = defLearningParams{ learnRate = 1 },
 				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
 				networkParams = NN.NetworkParams{
 					NN.dims = [10],
@@ -86,7 +87,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				learnRate = 1,
+				learningParams = defLearningParams{ learnRate = 1 },
 				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
 				networkParams = NN.NetworkParams{
 					NN.dims = [10,10],

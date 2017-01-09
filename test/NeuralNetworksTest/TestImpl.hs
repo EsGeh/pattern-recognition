@@ -14,13 +14,14 @@ import PatternRecogn.Utils
 import qualified PatternRecogn.NeuronalNetworks as NN
 
 import Data.List( intercalate )
+import Control.Monad.Reader
 import Control.Monad.Random
 
 
 data TestFunctionParams
 	= TestFunctionParams {
 		loggingFreq :: Int,
-		learnRate :: R,
+		learningParams :: NN.LearningParams,
 		stopConds :: [NN.StopCond],
 		networkParams :: NN.NetworkParams
 	}
@@ -31,7 +32,7 @@ testNeuronalNetworks ::
 	TestFunctionParams
 	-> TestData -> m ()
 testNeuronalNetworks
-		TestFunctionParams{networkParams = networkParams@NN.NetworkParams{..}, ..}
+		TestFunctionParams{ networkParams = networkParams@NN.NetworkParams{..}, ..}
 		algInput@TestData{ testData_input = mTestData }
 	=
 		do
@@ -83,15 +84,16 @@ testNeuronalNetworks
 					in
 						doLog $ concat ["quality of classifying test data: ", show qualityTestData]
 
-		adjustWeights :: NN.ClassificationParam -> IterationMonadT [NN.ClassificationParam] m NN.ClassificationParam
-		adjustWeights nw =
-			withIterationCtxt $ \it _ ->
+		adjustWeights :: NN.NetworkTrainingData -> IterationMonadT [NN.NetworkTrainingData] m NN.NetworkTrainingData
+		adjustWeights trainingState@NN.NetworkTrainingData{ weights = nw } =
+			withIterationCtxt $ \it lastValues -> 
 				do
 					when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
 						do
 							doLog $ concat ["iteration: ", show it]
 							showNWInfo nw
-					NN.adjustWeightsBatchWithRnd learnRate trainingData nw
+					runReaderT `flip` lastValues $
+						NN.adjustWeightsBatchWithRnd learningParams trainingData trainingState
 
 		initNW = NN.initialNetworkWithRnd inputDim dims
 		inputDim :: Int
