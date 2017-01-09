@@ -93,7 +93,7 @@ testNeuronalNetworks
 							doLog $ concat ["iteration: ", show it]
 							showNWInfo nw
 					--runReaderT `flip` lastValues $
-					NN.adjustWeightsBatchWithRnd learningParams trainingData nw
+					NN.adjustWeightsBatch learningParams trainingData nw
 
 		initNW = NN.initialNetworkWithRnd inputDim dims
 		inputDim :: Int
