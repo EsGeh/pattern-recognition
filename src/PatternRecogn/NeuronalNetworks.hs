@@ -5,9 +5,10 @@ module PatternRecogn.NeuronalNetworks(
 	ClassificationParam,
 	NetworkParams(..),
 
-	LearningParams,
-	LearningParamsDefault(..), defLearningParamsDefault,
-	LearningParamsSilvaAlmeida(..), defLearningParamsSilvaAlmeida,
+	LearningParams(..),
+	DefaultLearningParams(..), defDefaultLearningParams,
+	SilvaAlmeidaParams(..), defSilvaAlmeidaParams,
+	RPropParams(..), defRPropParams,
 
 	TrainingMonadT(), askIteration, askLastVals, askLastGradients,
 	NetworkDimensions,
@@ -79,13 +80,6 @@ calcClassificationParams learningParams networkParams@NetworkParams{..} training
 					expectedLabels
 					testClasses
 		inputDim = Lina.size $ fst $ head $ trainingDataInternal
-
-adjustWeightsBatch learningParams =
-	case learningParams of
-		Left learningParamsDefault ->
-			adjustWeightsBatchDefault learningParamsDefault
-		Right learningParamsSilvaAlmeida ->
-			adjustWeightsBatchSilvaAlmeida learningParamsSilvaAlmeida
 
 classify :: OutputInterpretation -> ClassificationParam -> Matrix -> VectorOf Label
 classify OutputInterpretation{..} param input =
@@ -195,8 +189,16 @@ adjustWeightsBatch =
 	adjustWeightsBatch_intern (repeat 0)
 -}
 
+adjustWeightsBatch either_learningParams =
+	case either_learningParams of
+		LearningParamsDefault learningParams ->
+			adjustWeightsBatchDefault learningParams
+		LearningParamsSilvaAlmeida learningParams ->
+			adjustWeightsBatchSilvaAlmeida learningParams
+		LearningParamsRProp learningParams ->
+			adjustWeightsBatchRProp learningParams
+
 adjustWeightsBatchSilvaAlmeida learningParams trainingData weights =
-	--askLastVals >>= \lastValues ->
 	askLastGradients >>= \(lastGradients:_) ->
 	askLastStepWidths >>= \(lastStepWidths:_) ->
 	lift $
@@ -211,10 +213,25 @@ adjustWeightsBatchSilvaAlmeida learningParams trainingData weights =
 				nwData_stepWidths = stepWidths
 			}
 
+adjustWeightsBatchRProp learningParams trainingData weights =
+	askLastGradients >>= \(lastGradients:_) ->
+	askLastStepWidths >>= \(lastStepWidths:_) ->
+	lift $
+	do
+		(gradients :: [Matrix]) <- calcGradientsBatch weights trainingData
+		let (newWeights, stepWidths) =
+			applyCorrectionsRProp learningParams lastGradients lastStepWidths gradients weights
+		return $
+			NetworkTrainingData {
+				nwData_weights = newWeights,
+				nwData_gradients = gradients,
+				nwData_stepWidths = stepWidths
+			}
+
 adjustWeightsBatchDefault ::
 	forall m .
 	MonadLog m =>
-	LearningParamsDefault
+	DefaultLearningParams
 	-> TrainingDataInternal ->
 	ClassificationParam -> TrainingMonadT m NetworkTrainingData
 adjustWeightsBatchDefault learningParams trainingData weights =
@@ -270,10 +287,10 @@ adjustWeightsOnLine trainingParams =
 					}
 -}
 
-applyCorrectionsSilvaAlmeida ::
-	LearningParamsSilvaAlmeida -> [Matrix] -> [Matrix] -> [Matrix] -> [Matrix]
+applyCorrectionsRProp ::
+	RPropParams -> [Matrix] -> [Matrix] -> [Matrix] -> [Matrix]
 	-> ([Matrix], [Matrix])
-applyCorrectionsSilvaAlmeida LearningParamsSilvaAlmeida{..} lastGradients lastStepWidths gradients weights =
+applyCorrectionsRProp RPropParams{..} lastGradients lastStepWidths gradients weights =
 	unzip $
 	map `flip` (zip4 weights gradients lastGradients lastStepWidths) $
 	\(w, gradient, lastGradient, lastStepWidth) ->
@@ -284,12 +301,35 @@ applyCorrectionsSilvaAlmeida LearningParamsSilvaAlmeida{..} lastGradients lastSt
 				(Lina.toLists lastStepWidth) (Lina.toLists $ gradient * lastGradient)
 				where
 					conc lastStepWidthEntry signChange
-						| signChange >= 0 = lastStepWidthEntry * accelerateFactor
-						| otherwise = lastStepWidthEntry * decelerateFactor
+						| signChange > 0 =
+								min rprop_stepMax (lastStepWidthEntry * rprop_accelerateFactor)
+						| signChange < 0 =
+								max rprop_stepMin (lastStepWidthEntry * rprop_decelerateFactor)
+						| otherwise =
+								lastStepWidthEntry
+		in
+			(w - learnRates * (Lina.cmap signum gradient), learnRates)
+
+applyCorrectionsSilvaAlmeida ::
+	SilvaAlmeidaParams -> [Matrix] -> [Matrix] -> [Matrix] -> [Matrix]
+	-> ([Matrix], [Matrix])
+applyCorrectionsSilvaAlmeida SilvaAlmeidaParams{..} lastGradients lastStepWidths gradients weights =
+	unzip $
+	map `flip` (zip4 weights gradients lastGradients lastStepWidths) $
+	\(w, gradient, lastGradient, lastStepWidth) ->
+		let
+			learnRates :: Matrix
+			learnRates = Lina.fromLists $
+				zipWith (zipWith conc)
+				(Lina.toLists lastStepWidth) (Lina.toLists $ gradient * lastGradient)
+				where
+					conc lastStepWidthEntry signChange
+						| signChange >= 0 = lastStepWidthEntry * silva_accelerateFactor
+						| otherwise = lastStepWidthEntry * silva_decelerateFactor
 		in
 			(w - learnRates * gradient, learnRates)
 
-applyCorrectionsDefault LearningParamsDefault{..} lastGradients gradients weights =
+applyCorrectionsDefault DefaultLearningParams{..} lastGradients gradients weights =
 	map `flip` (zip3 weights gradients lastGradients) $ \(w, gradient, lastGradient) ->
 		w - learnRate `Lina.scale` gradient + dampingFactor `Lina.scale` lastGradient
 

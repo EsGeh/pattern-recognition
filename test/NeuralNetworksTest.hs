@@ -23,13 +23,42 @@ main =
 	do
 
 		doLog $ "-------------------------------------------"
-		doLog $ "testing with operator \"and\"..."
+		doLog $ "learning operator \"and\"... with momentum"
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
 				learningParams =
-					Right $ defLearningParamsSilvaAlmeida,
-					--Left $ defLearningParamsDefault{ learnRate = 0.1 },
+					LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
+				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
+				networkParams = NN.NetworkParams{
+					NN.dims = [2],
+					NN.outputInterpretation = (NN.outputInterpretationMaximum 2)
+				}
+			}
+			(logicalOp_testInput (&&))
+
+		doLog $ "-------------------------------------------"
+		doLog $ "learning operator \"and\"... using silva almeida optimisation"
+		Test.testNeuronalNetworks
+			Test.TestFunctionParams{
+				loggingFreq = 0,
+				learningParams =
+					LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams,
+				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
+				networkParams = NN.NetworkParams{
+					NN.dims = [2],
+					NN.outputInterpretation = (NN.outputInterpretationMaximum 2)
+				}
+			}
+			(logicalOp_testInput (&&))
+
+		doLog $ "-------------------------------------------"
+		doLog $ "learning operator \"and\"... using RProp optimisation"
+		Test.testNeuronalNetworks
+			Test.TestFunctionParams{
+				loggingFreq = 0,
+				learningParams =
+					LearningParamsRProp $ defRPropParams,
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2],
@@ -43,7 +72,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
-				learningParams = Left $ defLearningParamsDefault{ learnRate = 0.1 },
+				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2],
@@ -57,7 +86,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 1000,
-				learningParams = Left $ defLearningParamsDefault{ learnRate = 1 },
+				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.0000001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2,1],
@@ -75,7 +104,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				learningParams = Left $ defLearningParamsDefault{ learnRate = 1 },
+				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
 				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
 				networkParams = NN.NetworkParams{
 					NN.dims = [10],
@@ -89,7 +118,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				learningParams = Left $ defLearningParamsDefault{ learnRate = 1 },
+				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
 				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
 				networkParams = NN.NetworkParams{
 					NN.dims = [10,10],
