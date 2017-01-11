@@ -4,6 +4,7 @@
 module NeuralNetworksTest.TestImpl(
 	testNeuronalNetworks,
 	TestFunctionParams(..),
+	ProgressInfo, ProgressEntry,
 ) where
 
 import Types
@@ -14,26 +15,40 @@ import PatternRecogn.Utils
 import qualified PatternRecogn.NeuronalNetworks as NN
 
 import Data.List( intercalate )
+import qualified Data.DList as DList
+import Data.DList( DList )
 import Control.Monad.Random
+import Control.Monad.Writer.Strict
 
 
 data TestFunctionParams
 	= TestFunctionParams {
 		loggingFreq :: Int,
+		logProgressFreq :: Int,
 		learningParams :: NN.LearningParams,
 		stopConds :: [NN.StopCond],
 		networkParams :: NN.NetworkParams
 	}
 
+type ProgressInfo = [ProgressEntry] -- the progression of success rate of the network
+type ProgressEntry = R -- success rate for training data
+
+instance (MonadLog m, Monoid w) => MonadLog (WriterT w m) where
+	doLog str = lift $ doLog str
+
+logProgressEntry e = tell $ DList.singleton e
+
 testNeuronalNetworks ::
 	forall m .
 	(MonadLog m, MonadRandom m) =>
 	TestFunctionParams
-	-> TestData -> m ()
+	-> TestData -> m ProgressInfo
 testNeuronalNetworks
 		TestFunctionParams{ networkParams = networkParams@NN.NetworkParams{..}, ..}
 		algInput@TestData{ testData_input = mTestData }
 	=
+		(DList.toList <$>) $
+		execWriterT $
 		do
 			doLog $ "network dimensions: " ++ show dims
 			(_, stopReason) <- NN.trainNetwork
@@ -47,14 +62,17 @@ testNeuronalNetworks
 					doLog $ "stopped. \n\tReason: iterations >=" ++ show it
 				NN.StopReason_Converged minProgress it ->
 					doLog $ intercalate "\n" $
-					[ concat [ "stopped after ", show it, " iterations."]
-					, concat [ "\tReason: progress < ", show minProgress]
-					]
+						[ concat [ "stopped after ", show it, " iterations."]
+						, concat [ "\tReason: progress < ", show minProgress]
+						]
 				NN.StopReason_QualityReached quality it ->
-					doLog $ intercalate "\n" $
-					[ concat [ "stopped after ", show it, " iterations."]
-					, concat [ "\tReason: quality >= ", show quality]
-					]
+					do
+						doLog $ intercalate "\n" $
+							[ concat [ "stopped after ", show it, " iterations."]
+							, concat [ "\tReason: quality >= ", show quality]
+							]
+						-- add last value:
+						logProgressEntry $ quality 
 			return ()
 	where
 		testWithTrainingData nw =
@@ -70,19 +88,35 @@ testNeuronalNetworks
 					expectedLabels
 					testClasses
 
+		showNWInfo :: NN.ClassificationParam -> NN.TrainingMonadT (WriterT (DList ProgressEntry) m) ()
 		showNWInfo network =
-			do
-				--doLog $ showNW network
-				let qualityTraining = testWithTrainingData network
-				doLog $ concat ["quality of classifying training data: ", show qualityTraining]
-				maybe (return ()) `flip` mTestData $ \(testData, expectedLabels) ->
-					let qualityTestData =
-						testNW network
-							testData
-							expectedLabels
-					in
-						doLog $ concat ["quality of classifying test data: ", show qualityTestData]
+			NN.askIteration >>= \it ->
+				when (
+					loggingFreq /= 0 && (it `mod` loggingFreq) == 0
+					|| 
+					logProgressFreq /= 0 && (it `mod`logProgressFreq) == 0
+				) $
+					do
+						let qualityTraining = testWithTrainingData network
+						if (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) then
+							do
+								doLog $ concat ["iteration: ", show it]
+								doLog $ concat ["quality of classifying training data: ", show qualityTraining]
+								maybe (return ()) `flip` mTestData $ \(testData, expectedLabels) ->
+									let qualityTestData =
+										testNW network
+											testData
+											expectedLabels
+									in
+										doLog $ concat ["quality of classifying test data: ", show qualityTestData]
+						else
+							lift $ logProgressEntry qualityTraining
 
+		adjustWeights :: NN.ClassificationParam -> NN.TrainingMonadT (WriterT (DList ProgressEntry) m) NN.NetworkTrainingData
+		adjustWeights nw =
+				showNWInfo nw >>
+				NN.adjustWeightsBatch learningParams trainingData nw
+		{-
 		adjustWeights :: NN.ClassificationParam -> NN.TrainingMonadT m NN.NetworkTrainingData
 		adjustWeights nw =
 			NN.askIteration >>= \it ->
@@ -94,6 +128,7 @@ testNeuronalNetworks
 							showNWInfo nw
 					--runReaderT `flip` lastValues $
 					NN.adjustWeightsBatch learningParams trainingData nw
+		-}
 
 		initNW = NN.initialNetworkWithRnd inputDim dims
 		inputDim :: Int
