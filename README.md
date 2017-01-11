@@ -1,2 +1,12 @@
-# Pattern recognition and machine learning
-## Exercise 2: simple linear regression classification
+
+# Pattern Recognition and Machine Learning
+
+## experimental project for testing different machine learning algorithms
+
+currently implemented:
+
+* Linear Regression classification (just binary)
+* Gauss classification
+* Projected Gauss classification based on Fisher Discriminant (just binary)
+* Perceptron learning (just binary)
+* Neural networks
