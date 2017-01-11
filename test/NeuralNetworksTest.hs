@@ -22,7 +22,7 @@ defTestParams dimensions =
 		loggingFreq = 0,
 		learningParams =
 			LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
-		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001],
+		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.0001],
 		networkParams = NN.NetworkParams{
 			NN.dims = dimensions,
 			NN.outputInterpretation = (NN.outputInterpretationMaximum $ last dimensions)
@@ -88,7 +88,7 @@ main =
 					NN.dims = [2,1],
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				},
-				loggingFreq = 1000
+				loggingFreq = 100000
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
@@ -101,7 +101,7 @@ main =
 					NN.dims = [2,1],
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				},
-				loggingFreq = 1000
+				loggingFreq = 100000
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
@@ -114,7 +114,7 @@ main =
 					NN.dims = [2,1],
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				},
-				loggingFreq = 1000
+				loggingFreq = 100000
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
@@ -122,27 +122,28 @@ main =
 			labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels
 
-{-
 		doLog $ "-------------------------------------------"
 		doLog $ "testing to classify test data (from file)..."
 		Test.testNeuronalNetworks
 			(defTestParams [10]){
-				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
+				learningParams = LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams,
+				-- learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
 				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
 				loggingFreq = 100
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
--}
 
+{-
 		doLog $ "-------------------------------------------"
 		doLog $ "testing to classify test data (from file)..."
 		Test.testNeuronalNetworks
 			(defTestParams [10,10]){
 				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
-				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
+				stopConds = [NN.StopIfConverges 0.0001, NN.StopIfQualityReached 1],
 				loggingFreq = 100
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
+-}
 
 	where
 		handleErrors x =
