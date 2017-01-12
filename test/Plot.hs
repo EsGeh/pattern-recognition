@@ -11,8 +11,8 @@ import Graphics.Rendering.Chart.Backend.Diagrams as Chart
 
 --import Control.Lens
 
-plotProgresses :: FilePath -> [(String, [[R]])] -> ErrT IO ()
-plotProgresses path plotParams =
+plotProgresses :: Int -> FilePath -> [(String, [[R]])] -> ErrT IO ()
+plotProgresses measureFreq path plotParams =
 	do
 		_ <- lift $ Chart.renderableToFile def path $ Chart.toRenderable diagram
 		return ()
@@ -24,7 +24,7 @@ plotProgresses path plotParams =
 				forM_ plotParams $ \(title, progresses) ->
 					Chart.plot $ line title $
 						-- map `flip` lines $
-						map ((fromIntegral <$> ([0..] :: [Int])) `zip`) $
+						map ((fromIntegral <$> ([0,measureFreq ..] :: [Int])) `zip`) $
 						progresses
 
 plotProgress :: FilePath -> String -> [R] -> ErrT IO ()

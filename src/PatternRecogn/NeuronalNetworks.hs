@@ -7,6 +7,7 @@ module PatternRecogn.NeuronalNetworks(
 	NetworkParams(..),
 
 	LearningParams(..),
+	SpecificLearningParams(..),
 	DefaultLearningParams(..), defDefaultLearningParams,
 	SilvaAlmeidaParams(..), defSilvaAlmeidaParams,
 	RPropParams(..), defRPropParams,
@@ -189,20 +190,39 @@ adjustWeightsBatch ::
 	LearningParams
 	-- -> [(Vector, Vector)]
 	-> ClassificationParam -> TrainingMonadT TrainingDataInternal m TrainingState
-adjustWeightsBatch either_learningParams weights =
-	withSample $
-	case either_learningParams of
-		LearningParamsDefault learningParams ->
-			adjustWeightsBatchDefault learningParams `flip` weights
-		LearningParamsSilvaAlmeida learningParams ->
-			adjustWeightsBatchSilvaAlmeida learningParams `flip` weights
-		LearningParamsRProp learningParams ->
-			adjustWeightsBatchRProp learningParams `flip` weights
+adjustWeightsBatch
+		LearningParams{
+			learningP_specificParams = either_learningParams,
+			learningP_sampleSize = mSampleSize
+		}
+		weights
+	=
+		withSample mSampleSize $
+		case either_learningParams of
+			LearningParamsDefault learningParams ->
+				adjustWeightsBatchDefault learningParams `flip` weights
+			LearningParamsSilvaAlmeida learningParams ->
+				adjustWeightsBatchSilvaAlmeida learningParams `flip` weights
+			LearningParamsRProp learningParams ->
+				adjustWeightsBatchRProp learningParams `flip` weights
 
 withSample ::
 	MonadRandom m =>
-	(TrainingDataInternal_unpacked -> TrainingMonadT TrainingDataInternal m b) -> TrainingMonadT TrainingDataInternal m b
-withSample f =
+	Maybe Int
+	-> (TrainingDataInternal_unpacked -> TrainingMonadT TrainingDataInternal m b) -> TrainingMonadT TrainingDataInternal m b
+withSample mSampleSize f =
+	rotateAndTakeSample >>= f
+	where
+		rotateAndTakeSample =
+			getState >>= \s ->
+				maybe
+					(return $ unpackTrainingData s) `flip` mSampleSize $ \sampleSize ->
+					do
+						let newState = rotateTrainingData sampleSize $ s
+						-- newState <- randomPermutation $ s
+						putState $ newState
+						return $ takeSample sampleSize s
+{-
 	do
 		s <- getState
 		let newState = rotateTrainingData 50 $ s
@@ -210,6 +230,7 @@ withSample f =
 		-- let newState = s
 		putState $ newState
 		f $ takeSample 50 s
+-}
 
 adjustWeightsBatchSilvaAlmeida learningParams trainingData weights =
 	askLastGradients >>= \(lastGradients:_) ->

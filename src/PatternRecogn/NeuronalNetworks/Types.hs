@@ -30,6 +30,12 @@ data NetworkParams
 	}
 
 data LearningParams
+	= LearningParams {
+		learningP_specificParams :: SpecificLearningParams,
+		learningP_sampleSize :: Maybe Int
+	}
+
+data SpecificLearningParams
 	= LearningParamsDefault DefaultLearningParams
 	| LearningParamsSilvaAlmeida SilvaAlmeidaParams
 	| LearningParamsRProp RPropParams
