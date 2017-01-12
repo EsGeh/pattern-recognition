@@ -1,10 +1,16 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
 module PatternRecogn.NeuronalNetworks.Types where
 
 import PatternRecogn.Lina as Lina hiding( cond )
 import PatternRecogn.Types hiding( cond )
 import PatternRecogn.Utils
+
+import Data.Foldable as Fold
+import Control.Monad.Random
 import Control.Monad
+import qualified Data.Sequence as Seq
+--import Control.DeepSeq
 
 
 -----------------------------------------------------------------
@@ -67,8 +73,49 @@ defRPropParams =
 
 type NetworkDimensions = [Int]
 
-type TrainingDataInternal =
+type TrainingDataInternal_unpacked =
 	[(Vector,Vector)] -- sample, expected output
+
+type TrainingDataInternal =
+	Seq.Seq (Vector,Vector) -- sample, expected output
+
+randomPermutation :: MonadRandom m => TrainingDataInternal -> m TrainingDataInternal
+randomPermutation l
+	| Seq.null l = return l
+	| otherwise =
+		do
+			index <-
+				getRandomR (0, Seq.length l - 1)
+			(\rest -> ((Seq.<|) $ ((Seq.index $ l) $ index)) $ rest) <$> randomPermutation (deleteAt index $ l)
+			--(\rest -> ((Seq.<|) $!! ((Seq.index $!! l) $!! index)) $!! rest) <$> randomPermutation (force $ deleteAt index $!! l)
+
+deleteAt index l =
+	case Seq.splitAt index l of
+		(x, y) -> x Seq.>< Seq.drop 1 y
+
+rotateTrainingData :: Int -> TrainingDataInternal -> TrainingDataInternal
+rotateTrainingData index =
+	(\(x,y) -> y Seq.>< x)
+	.
+	Seq.splitAt index
+
+takeSample :: Int -> TrainingDataInternal -> TrainingDataInternal_unpacked
+takeSample sampleMaxSize l =
+	Fold.toList $ Seq.take sampleMaxSize l
+
+packTrainingData :: TrainingDataInternal_unpacked -> TrainingDataInternal
+packTrainingData = Seq.fromList
+
+unpackTrainingData :: TrainingDataInternal -> [(Vector,Vector)]
+unpackTrainingData = Fold.toList
+
+internalFromTrainingData OutputInterpretation{..} =
+	map (mapToSnd $ labelToOutput)
+
+internalFromBundledTrainingData OutputInterpretation{..} =
+	map (mapToSnd $ labelToOutput)
+	.
+	fromBundled
 
 data OutputInterpretation =
 	OutputInterpretation {
@@ -102,26 +149,27 @@ outputInterpretationSingleOutput =
 			case Lina.toList x of
 				[output] ->
 					round output
-					--if output >= 0.5 then 1 else 0
 				_ -> error "outputInterpretation: error!",
 		labelToOutput =
 			\lbl -> Lina.fromList [fromIntegral lbl]
 	}
 
-data NetworkTrainingData =
-	NetworkTrainingData {
+data TrainingState =
+	TrainingState {
 		nwData_weights :: ClassificationParam,
 		nwData_gradients :: [Matrix],
 		nwData_stepWidths :: [Matrix]
+		--nwData_trainingView :: TrainingDataInternal
 	}
 
-initialTrainingData weights =
-	NetworkTrainingData{
+initialTrainingState weights =
+	TrainingState{
 		nwData_weights = weights,
 		nwData_gradients =
 			map (\x -> Lina.konst 0 $ Lina.size x) weights,
 		nwData_stepWidths =
 			map (Lina.konst 0.1 . Lina.size) weights
+		--nwData_trainingView = trainingData
 	}
 
 -- | sums up element wise differences

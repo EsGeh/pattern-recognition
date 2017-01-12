@@ -19,6 +19,8 @@ import qualified Data.DList as DList
 import Data.DList( DList )
 import Control.Monad.Random
 import Control.Monad.Writer.Strict
+--import qualified Data.Sequence as Seq
+--import Data.Foldable as Fold
 
 
 data TestFunctionParams
@@ -50,11 +52,13 @@ testNeuronalNetworks
 		(DList.toList <$>) $
 		execWriterT $
 		do
+			initialState <- NN.randomPermutation $ NN.packTrainingData trainingData
 			doLog $ "network dimensions: " ++ show dims
 			(_, stopReason) <- NN.trainNetwork
 				networkParams
 				stopConds
 				testWithTrainingData
+				initialState
 				adjustWeights
 				=<< initNW
 			case stopReason of
@@ -88,7 +92,7 @@ testNeuronalNetworks
 					expectedLabels
 					testClasses
 
-		showNWInfo :: NN.ClassificationParam -> NN.TrainingMonadT (WriterT (DList ProgressEntry) m) ()
+		showNWInfo :: NN.ClassificationParam -> NN.TrainingMonadT NN.TrainingDataInternal (WriterT (DList ProgressEntry) m) ()
 		showNWInfo network =
 			NN.askIteration >>= \it ->
 				when (
@@ -112,28 +116,17 @@ testNeuronalNetworks
 						else
 							lift $ logProgressEntry qualityTraining
 
-		adjustWeights :: NN.ClassificationParam -> NN.TrainingMonadT (WriterT (DList ProgressEntry) m) NN.NetworkTrainingData
+		adjustWeights :: NN.ClassificationParam -> NN.TrainingMonadT NN.TrainingDataInternal (WriterT (DList ProgressEntry) m) NN.TrainingState
 		adjustWeights nw =
-				showNWInfo nw >>
-				NN.adjustWeightsBatch learningParams trainingData nw
-		{-
-		adjustWeights :: NN.ClassificationParam -> NN.TrainingMonadT m NN.NetworkTrainingData
-		adjustWeights nw =
-			NN.askIteration >>= \it ->
-			--NN.askLastVals >>= \lastValues -> 
-				do
-					when (loggingFreq /= 0 && (it `mod` loggingFreq) == 0) $
-						do
-							doLog $ concat ["iteration: ", show it]
-							showNWInfo nw
-					--runReaderT `flip` lastValues $
-					NN.adjustWeightsBatch learningParams trainingData nw
-		-}
+			do
+				showNWInfo nw
+				--NN.randomSel 0.5 trainingData >>= \sample ->
+				--let sample = Fold.toList trainingData
+				NN.adjustWeightsBatch learningParams nw
 
-		initNW = NN.initialNetworkWithRnd inputDim dims
-		inputDim :: Int
-		inputDim = Lina.size $ fst $ head trainingData
-		trainingData :: NN.TrainingDataInternal
+		initNW = NN.initialNetworkWithRnd (NN.inputDim trainingData) dims
+
+		trainingData :: NN.TrainingDataInternal_unpacked
 		trainingData =
 			NN.internalFromTrainingData outputInterpretation $
 			testData_train algInput
