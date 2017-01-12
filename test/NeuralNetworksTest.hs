@@ -51,13 +51,14 @@ main =
 				}}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 		let
-			labels = [3,5,7,8]
+			labels = [0..9]
+			--labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels
 		testAll "digits"
 			(defTestParams [32,10]){
 				loggingFreq = 50,
 				--logProgressFreq = 50,
-				stopConds = [NN.StopIfQualityReached 0.9, NN.StopIfConverges 0.00001, NN.StopAfterMaxIt 1000]
+				stopConds = [NN.StopIfQualityReached 0.9, NN.StopIfConverges 0.00001, NN.StopAfterMaxIt 10000]
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
 		liftIO $ putStrLn $ "done"
