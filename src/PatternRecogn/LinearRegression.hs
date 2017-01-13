@@ -6,38 +6,42 @@ import PatternRecogn.Types
 import PatternRecogn.Utils
 
 
-type ClassificationParam = Vector
+type ClassificationParam = (Vector, (Label,Label))
 
-calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
-calcClassificationParams set1 set2 =
-	flatten $ -- matrix to vector
+calcClassificationParams :: TrainingDataBin -> ClassificationParam
+calcClassificationParams trainingDataBin =
 	let
-		x =
-			extendInputData $
-				set1
-				===
-				set2
-		y =
-			konst (-1) (count1,1)
-			===
-			konst 1 (count2,1)
-		count1 = rows set1
-		count2 = rows set2
-		xTr_times_x_SAFE =
-			let
-				xTr_times_x = tr' x <> x
-			in
-				if det xTr_times_x > 0.01
-				then xTr_times_x
-				else
-					xTr_times_x + (alpha * ident (rows xTr_times_x))
-					where alpha = 0.01
+		[(set1,label1), (set2,label2)] = fromTrainingDataBin trainingDataBin
 	in
-		inv xTr_times_x_SAFE <> tr' x <> y
+		(\x -> (x,(label1,label2))) $
+		flatten $ -- matrix to vector
+		let
+			x =
+				extendInputData $
+					set1
+					===
+					set2
+			y =
+				konst (-1) (count1,1)
+				===
+				konst 1 (count2,1)
+			count1 = rows set1
+			count2 = rows set2
+			xTr_times_x_SAFE =
+				let
+					xTr_times_x = tr' x <> x
+				in
+					if det xTr_times_x > 0.01
+					then xTr_times_x
+					else
+						xTr_times_x + (alpha * ident (rows xTr_times_x))
+						where alpha = 0.01
+		in
+			inv xTr_times_x_SAFE <> tr' x <> y
 
-	
-classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
-classify (labelNeg, labelPos) beta input =
+
+classify :: ClassificationParam -> Matrix -> VectorOf Label
+classify (beta,(labelNeg, labelPos)) input =
 	cmap (assignLabels . sgn) $
 		extendInputData input #> beta
 	where
@@ -50,5 +54,5 @@ classify (labelNeg, labelPos) beta input =
 			| otherwise = labelPos
 
 infoStringForParam :: ClassificationParam -> String
-infoStringForParam beta =
+infoStringForParam (beta,_) =
 	concat $ ["beta size:", show $ size beta]

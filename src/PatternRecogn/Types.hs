@@ -1,18 +1,14 @@
 module PatternRecogn.Types(
-	-- ClassificationParam(..),
 	MonadLog(..),
 	Label,
-	module Lina
+	TrainingDataBundled,
+	TrainingData,
+	TrainingDataBin(), 
+	module PatternRecogn.Types.Conversions,
+	module PatternRecogn.Lina,
 ) where
 
-import PatternRecogn.Lina as Lina
-import Control.Monad.IO.Class
+import PatternRecogn.Types.Types
+import PatternRecogn.Types.Conversions
 
-import Foreign.C.Types( CInt )
-
-type Label = CInt
-
--- type ClassificationParam = ()
-
-class (Monad m) => MonadLog m where
-	doLog :: String -> m ()
+import PatternRecogn.Lina

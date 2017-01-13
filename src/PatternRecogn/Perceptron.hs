@@ -1,8 +1,13 @@
 {-# LANGUAGE FlexibleContexts #-}
-module PatternRecogn.Perceptron where
+module PatternRecogn.Perceptron(
+	ClassificationParam, ClassificationParamWithLabels,
 
-import PatternRecogn.Lina as Lina
-import PatternRecogn.Types
+	calcClassificationParams,
+	classify,
+) where
+
+import PatternRecogn.Lina as Lina hiding( cond )
+import PatternRecogn.Types hiding( cond )
 import PatternRecogn.Utils
 
 import Control.Monad.Identity
@@ -11,22 +16,26 @@ import Control.Monad.Identity
 type ClassificationParam
 	= Vector
 
+type ClassificationParamWithLabels = (ClassificationParam, (Label,Label))
 
-calcClassificationParams :: Matrix -> Matrix -> ClassificationParam
-calcClassificationParams set1 set2 =
-	calcClassificationParams_extendedVecs
-		(extendInputData set1)
-		(extendInputData set2)
+calcClassificationParams :: TrainingDataBin -> ClassificationParamWithLabels
+calcClassificationParams trainingDataBin  =
+	let
+		[(set1,label1), (set2,label2)] = fromTrainingDataBin trainingDataBin
+	in
+		(\x -> (x, (label1,label2))) $
+		calcClassificationParams_extendedVecs
+			(extendInputData set1)
+			(extendInputData set2)
 
 calcClassificationParams_extendedVecs :: Matrix -> Matrix -> ClassificationParam
 calcClassificationParams_extendedVecs set1 set2 =
-	last $
 	runIdentity $
-	iterateWhileM cond
-		(const $ return . perceptronStepAll set1 set2)
+	iterateWhileM_withCtxt 0 cond
+		(return . perceptronStepAll set1 set2)
 		(Lina.konst 0 $ Lina.cols set1)
 	where
-		cond it (lastBeta:_) =
+		cond lastBeta = return $
 			not $
 			(
 				(<=0.01) $ pnorm . cmap fromIntegral $
@@ -64,8 +73,8 @@ perceptronStep expectedLabel set param =
 					then beta + y
 					else beta - y
 
-classify :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label
-classify labels beta =
+classify :: ClassificationParamWithLabels -> Matrix -> VectorOf Label
+classify (beta,labels) =
 	classify_extendedInput labels beta . extendInputData
 
 classify_extendedInput :: (Label, Label) -> ClassificationParam -> Matrix -> VectorOf Label

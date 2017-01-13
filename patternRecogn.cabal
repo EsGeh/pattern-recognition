@@ -2,7 +2,7 @@ name:                patternRecogn
 version:             0.1.0.0
 synopsis:            pattern recognition examples in haskell
 description:         Please see README.md
-homepage:            https://github.com/githubuser/testLina#readme
+homepage:            https://github.com/EsGeh/pattern-recognition
 license:             BSD3
 license-file:        LICENSE
 author:              EsGeh
@@ -16,17 +16,61 @@ cabal-version:       >=1.10
 executable patternRecogn-exe
   hs-source-dirs:      app
   main-is:             Main.hs
-  other-modules:
-    Types
-    , TestBinary
-    , TestMultiple
-    , Plot
-    , Types
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N -Wno-tabs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+
+library
+  hs-source-dirs:      src
+  exposed-modules:
+    PatternRecogn
+    , PatternRecogn.Types
+    , PatternRecogn.Types.Types
+    , PatternRecogn.Types.Conversions
+    , PatternRecogn.Lina
+    , PatternRecogn.Utils
+    -- Gauß classification:
+    , PatternRecogn.Gauss.Classify
+    , PatternRecogn.Gauss.Projected
+    , PatternRecogn.Gauss.Types
+    , PatternRecogn.Gauss.Utils
+		-- linear regression classification:
+    , PatternRecogn.LinearRegression
+		-- perceptron learning classification:
+    , PatternRecogn.Perceptron
+		-- neuronal networks:
+    , PatternRecogn.NeuronalNetworks
+    , PatternRecogn.NeuronalNetworks.TrainingMonad
+    , PatternRecogn.NeuronalNetworks.Types
+  other-modules:
+  ghc-options:
+    -Wall -Wno-missing-signatures -Wno-tabs
+  build-depends:
+    base
+    , hmatrix
+    , mtl
+    , vector
+    , MonadRandom
+    , containers
+    , deepseq
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+
+test-suite neuralNetworks-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             NeuralNetworksTest.hs
+  other-modules:
+    Types
+    , LoadTestData
+    , Utils
+    --, TestBinary
+    , NeuralNetworksTest.TestImpl
+    , Plot
   build-depends:
     patternRecogn
-    , base
+    , base >= 4.7 && < 5
     , hmatrix
     , cassava
     , mtl
@@ -37,47 +81,42 @@ executable patternRecogn-exe
     , data-default-class
     , lens
     , MonadRandom
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
-
-library
-  hs-source-dirs:      src
-  exposed-modules:
-    PatternRecogn
-    , PatternRecogn.Types
-    , PatternRecogn.Lina
-    , PatternRecogn.Utils
-    -- Gauß classification:
-    , PatternRecogn.Gauss.Binary
-    , PatternRecogn.Gauss.Types
-    , PatternRecogn.Gauss.Utils
-		-- linear regression classification:
-    , PatternRecogn.LinearRegression
-		-- perceptron learning classification:
-    , PatternRecogn.Perceptron
-		-- neuronal networks:
-    , PatternRecogn.NeuronalNetworks
-  other-modules:
+    , dlist
+    , containers
   ghc-options:
-    -Wno-tabs
-  build-depends:
-    base
-    , hmatrix
-    , mtl
-    , vector
-    , MonadRandom
+    -threaded -rtsopts -with-rtsopts=-N
+    -Wall -Wno-missing-signatures -Wno-tabs
   default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
 
-test-suite patternRecogn-test
+test-suite gauss-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:       base
-                     , testLina
-  ghc-options:         -threaded
+  main-is:             GaussTest.hs
+  other-modules:
+    Types
+    , LoadTestData
+    , Utils
+    , TestFunctions
+    , AbstractTest
+    , Plot
+  build-depends:
+    patternRecogn
+    , base >= 4.7 && < 5
+    , hmatrix
+    , cassava
+    , mtl
+    , bytestring
+    , vector
+    , Chart
+    , Chart-diagrams
+    , data-default-class
+    , lens
+    , MonadRandom
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N
+    -Wall -Wno-missing-signatures -Wno-tabs
   default-language:    Haskell2010
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/testLina
+  location: https://github.com/EsGeh/pattern-recognition
