@@ -7,6 +7,7 @@ import Utils
 import PatternRecogn.Types
 
 import qualified PatternRecogn.Lina as Lina
+import PatternRecogn.Utils
 
 
 testWithAlgBin ::
