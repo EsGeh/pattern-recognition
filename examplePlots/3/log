@@ -1,9 +1,22 @@
+patternRecogn-0.1.0.0: unregistering (local file changes: test/NeuralNetworksTest.hs)
+patternRecogn-0.1.0.0: build (lib + exe + test)
+Preprocessing library patternRecogn-0.1.0.0...
+Preprocessing executable 'patternRecogn-exe' for patternRecogn-0.1.0.0...
+Preprocessing test suite 'neuralNetworks-test' for patternRecogn-0.1.0.0...
+[5 of 5] Compiling Main             ( test/NeuralNetworksTest.hs, .stack-work/dist/x86_64-linux/Cabal-1.24.0.0/build/neuralNetworks-test/neuralNetworks-test-tmp/Main.o )
+Linking .stack-work/dist/x86_64-linux/Cabal-1.24.0.0/build/neuralNetworks-test/neuralNetworks-test ...
+patternRecogn-0.1.0.0: copy/register
+Installing library in
+/data/haskell/patternRecogn/patternRecogn/.stack-work/install/x86_64-linux/lts-7.7/8.0.1/lib/x86_64-linux-ghc-8.0.1/patternRecogn-0.1.0.0-9vfVkP83dZRGIRs96NckMH
+Installing executable(s) in
+/data/haskell/patternRecogn/patternRecogn/.stack-work/install/x86_64-linux/lts-7.7/8.0.1/bin
+Registering patternRecogn-0.1.0.0...
 patternRecogn-0.1.0.0: test (suite: neuralNetworks-test, args: O2)
 
 -------------------------------------------
 running AND with momentum
 network dimensions: [2]
-stopped after 270 iterations.
+stopped after 293 iterations.
 	Reason: quality >= 1.0
 -------------------------------------------
 running AND with Silva Almeida
@@ -13,90 +26,78 @@ stopped after 7 iterations.
 -------------------------------------------
 running AND with RProp
 network dimensions: [2]
-stopped after 5 iterations.
+stopped after 9 iterations.
 	Reason: quality >= 1.0
 plotting results to plots/AND.png...
 -------------------------------------------
 running OR with momentum
 network dimensions: [2]
-stopped after 321 iterations.
+stopped after 301 iterations.
 	Reason: quality >= 1.0
 -------------------------------------------
 running OR with Silva Almeida
 network dimensions: [2]
-stopped after 2 iterations.
+stopped after 8 iterations.
 	Reason: quality >= 1.0
 -------------------------------------------
 running OR with RProp
 network dimensions: [2]
-stopped after 2 iterations.
+stopped after 5 iterations.
 	Reason: quality >= 1.0
 plotting results to plots/OR.png...
 -------------------------------------------
 running XOR with momentum
 network dimensions: [2,1]
-stopped after 9697 iterations.
-	Reason: quality >= 1.0
+stopped. 
+	Reason: iterations >=1000
 -------------------------------------------
 running XOR with Silva Almeida
 network dimensions: [2,1]
-stopped after 134 iterations.
+stopped after 25 iterations.
 	Reason: progress < 1.0e-5
 -------------------------------------------
 running XOR with RProp
 network dimensions: [2,1]
-stopped after 17 iterations.
-	Reason: quality >= 1.0
+stopped. 
+	Reason: iterations >=1000
 plotting results to plots/XOR.png...
 -------------------------------------------
 running digits with momentum
 network dimensions: [32,10]
 iteration: 0
-quality of classifying training data: 0.26863806747188673
-quality of classifying test data: 0.2300469483568075
+quality of classifying training data: 1.665972511453561e-3
+quality of classifying test data: 7.82472613458529e-3
 iteration: 50
-quality of classifying training data: 0.22657226155768428
-quality of classifying test data: 0.2597809076682316
+quality of classifying training data: 0.27113702623906705
+quality of classifying test data: 0.23943661971830985
 iteration: 100
-quality of classifying training data: 0.22740524781341107
-quality of classifying test data: 0.25821596244131456
+quality of classifying training data: 0.27197001249479386
+quality of classifying test data: 0.23943661971830985
 iteration: 150
-quality of classifying training data: 0.2269887546855477
-quality of classifying test data: 0.2597809076682316
+quality of classifying training data: 0.27446897126197417
+quality of classifying test data: 0.2644757433489828
 iteration: 200
-quality of classifying training data: 0.22740524781341107
-quality of classifying test data: 0.2597809076682316
+quality of classifying training data: 0.275301957517701
+quality of classifying test data: 0.26291079812206575
 iteration: 250
-quality of classifying training data: 0.22865472719700125
-quality of classifying test data: 0.26134585289514867
+quality of classifying training data: 0.2778009162848813
+quality of classifying test data: 0.2676056338028169
 iteration: 300
-quality of classifying training data: 0.24198250728862974
-quality of classifying test data: 0.28169014084507044
+quality of classifying training data: 0.280716368179925
+quality of classifying test data: 0.26604068857589985
 iteration: 350
-quality of classifying training data: 0.47646813827571843
-quality of classifying test data: 0.48200312989045385
+quality of classifying training data: 0.46105789254477303
+quality of classifying test data: 0.4538341158059468
 iteration: 400
-quality of classifying training data: 0.49062890462307374
-quality of classifying test data: 0.4835680751173709
-iteration: 450
-quality of classifying training data: 0.49604331528529777
-quality of classifying test data: 0.48826291079812206
-iteration: 500
-quality of classifying training data: 0.495210329029571
-quality of classifying test data: 0.48826291079812206
-iteration: 550
-quality of classifying training data: 0.7255310287380258
-quality of classifying test data: 0.6635367762128326
-iteration: 600
-quality of classifying training data: 0.7555185339441899
-quality of classifying test data: 0.701095461658842
-stopped after 650 iterations.
+quality of classifying training data: 0.6997084548104956
+quality of classifying test data: 0.6885758998435054
+stopped after 440 iterations.
 	Reason: quality >= 0.9
 -------------------------------------------
 running digits with Silva Almeida
 network dimensions: [32,10]
 iteration: 0
-quality of classifying training data: 8.329862557267805e-4
+quality of classifying training data: 1.665972511453561e-3
 quality of classifying test data: 1.564945226917058e-3
 stopped after 2 iterations.
 	Reason: progress < 1.0e-5
@@ -104,10 +105,11 @@ stopped after 2 iterations.
 running digits with RProp
 network dimensions: [32,10]
 iteration: 0
-quality of classifying training data: 0.22407330279050397
-quality of classifying test data: 0.2597809076682316
-stopped after 22 iterations.
+quality of classifying training data: 0.27072053311120364
+quality of classifying test data: 0.23161189358372458
+stopped after 16 iterations.
 	Reason: quality >= 0.9
 plotting results to plots/digits.png...
 done
 
+Completed 2 action(s).

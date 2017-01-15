@@ -37,7 +37,7 @@ defTestParams dimensions =
 		}
 	}
 
-plotPath descr = ("plots/" ++ descr ++ ".png")
+plotPath descr = ("plots/" ++ descr ++ ".svg")
 
 main :: IO ()
 main =

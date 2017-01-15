@@ -14,7 +14,7 @@ import Graphics.Rendering.Chart.Backend.Diagrams as Chart
 plotProgresses :: Int -> FilePath -> [(String, [[R]])] -> ErrT IO ()
 plotProgresses measureFreq path plotParams =
 	do
-		_ <- lift $ Chart.renderableToFile def path $ Chart.toRenderable diagram
+		_ <- lift $ Chart.renderableToFile def{ _fo_format = Chart.SVG } path $ Chart.toRenderable diagram
 		return ()
 	where
 		diagram :: EC (Layout Double Double) ()
