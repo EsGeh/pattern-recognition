@@ -10,6 +10,8 @@ import NeuralNetworksTest.TestImpl as Test
 import PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Types
 
+import System.IO
+
 
 -----------------------------------------------------------------
 -- IO stuff:
@@ -39,6 +41,7 @@ plotPath descr = ("plots/" ++ descr ++ ".png")
 
 main :: IO ()
 main =
+	(hSetBuffering stdout NoBuffering >>) $
 	handleErrors $
 	do
 		testAll "AND" (defTestParams [2]) (logicalOp_testInput (&&))
@@ -51,16 +54,17 @@ main =
 				}}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 		let
-			labels = [0..9]
-			--labels = [3,5,7,8]
+			--labels = [0..9]
+			labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels
+		digitsTestData <- fromBundledTestData <$> Load.readTestInput (paths `zip` labels)
 		testAll "digits"
 			(defTestParams [32,10]){
 				loggingFreq = 50,
 				--logProgressFreq = 50,
 				stopConds = [NN.StopIfQualityReached 0.9, NN.StopIfConverges 0.00001, NN.StopAfterMaxIt 10000]
 			}
-			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
+			digitsTestData
 		liftIO $ putStrLn $ "done"
 		return ()
 	where
