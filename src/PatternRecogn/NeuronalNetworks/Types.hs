@@ -23,36 +23,46 @@ data NetworkParams
 		outputInterpretation :: OutputInterpretation
 	}
 
-type LearningParams = Either LearningParamsDefault LearningParamsSilvaAlmeida
+data LearningParams
+	= LearningParamsDefault DefaultLearningParams
+	| LearningParamsSilvaAlmeida SilvaAlmeidaParams
+	| LearningParamsRProp RPropParams
 
-data LearningParamsDefault
-	= LearningParamsDefault {
+data DefaultLearningParams
+	= DefaultLearningParams {
 		learnRate :: R,
 		dampingFactor :: R
 	}
-defLearningParamsDefault =
-	LearningParamsDefault {
+defDefaultLearningParams =
+	DefaultLearningParams {
 		learnRate = 0.1,
 		dampingFactor = 0
 	}
 
-data LearningParamsSilvaAlmeida
-	= LearningParamsSilvaAlmeida {
-		{-
-		stepMin :: Maybe R,
-		stepMax :: Maybe R,
-		-}
-		accelerateFactor :: R,
-		decelerateFactor :: R
+data SilvaAlmeidaParams
+	= SilvaAlmeidaParams {
+		silva_accelerateFactor :: R,
+		silva_decelerateFactor :: R
 	}
-defLearningParamsSilvaAlmeida =
-	LearningParamsSilvaAlmeida {
-		{-
-		stepMin = 0.1,
-		stepMax = 10,
-		-}
-		accelerateFactor = 2,
-		decelerateFactor = 0.5
+defSilvaAlmeidaParams =
+	SilvaAlmeidaParams {
+		silva_accelerateFactor = 2,
+		silva_decelerateFactor = 0.5
+	}
+
+data RPropParams
+	= RPropParams {
+		rprop_stepMin :: R,
+		rprop_stepMax :: R,
+		rprop_accelerateFactor :: R,
+		rprop_decelerateFactor :: R
+	}
+defRPropParams =
+	RPropParams {
+		rprop_stepMin = 0.1,
+		rprop_stepMax = 10,
+		rprop_accelerateFactor = 2,
+		rprop_decelerateFactor = 0.5
 	}
 
 type NetworkDimensions = [Int]
