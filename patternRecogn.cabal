@@ -41,6 +41,8 @@ library
     , PatternRecogn.Perceptron
 		-- neuronal networks:
     , PatternRecogn.NeuronalNetworks
+    , PatternRecogn.NeuronalNetworks.TrainingMonad
+    , PatternRecogn.NeuronalNetworks.Types
   other-modules:
   ghc-options:
     -Wall -Wno-missing-signatures -Wno-tabs
@@ -50,6 +52,8 @@ library
     , mtl
     , vector
     , MonadRandom
+    , containers
+    , deepseq
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
 
@@ -77,6 +81,8 @@ test-suite neuralNetworks-test
     , data-default-class
     , lens
     , MonadRandom
+    , dlist
+    , containers
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
     -Wall -Wno-missing-signatures -Wno-tabs
