@@ -22,7 +22,7 @@ defTestParams dimensions =
 		loggingFreq = 0,
 		learningParams =
 			LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
-		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001],
+		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.0001],
 		networkParams = NN.NetworkParams{
 			NN.dims = dimensions,
 			NN.outputInterpretation = (NN.outputInterpretationMaximum $ last dimensions)
@@ -89,7 +89,7 @@ main =
 					NN.dims = [2,1],
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				},
-				loggingFreq = 1000
+				loggingFreq = 100000
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
@@ -102,7 +102,7 @@ main =
 					NN.dims = [2,1],
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				},
-				loggingFreq = 1000
+				loggingFreq = 100000
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 
@@ -115,7 +115,7 @@ main =
 					NN.dims = [2,1],
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				},
-				loggingFreq = 1000
+				loggingFreq = 100000
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 -}
@@ -128,7 +128,7 @@ main =
 		doLog $ "testing to classify test data (from file)..."
 		Test.testNeuronalNetworks
 			(defTestParams [32,10]){
-				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
+				learningParams = LearningParamsDefault $ defDefaultLearningParams,
 				stopConds = [NN.StopIfConverges 0.00001, NN.StopIfQualityReached 1],
 				loggingFreq = 50
 			}
@@ -140,7 +140,7 @@ main =
 		Test.testNeuronalNetworks
 			(defTestParams [10,10]){
 				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
-				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
+				stopConds = [NN.StopIfConverges 0.0001, NN.StopIfQualityReached 1],
 				loggingFreq = 100
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))

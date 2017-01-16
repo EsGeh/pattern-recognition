@@ -230,7 +230,7 @@ adjustWeightsBatchRProp learningParams trainingData weights =
 
 adjustWeightsBatchDefault ::
 	forall m .
-	MonadLog m =>
+	(MonadLog m, MonadRandom m) =>
 	DefaultLearningParams
 	-> TrainingDataInternal ->
 	ClassificationParam -> TrainingMonadT m NetworkTrainingData
@@ -239,7 +239,7 @@ adjustWeightsBatchDefault learningParams trainingData weights =
 	askLastGradients >>= \(lastGradients:_) ->
 	lift $
 	do
-		(gradients :: [Matrix]) <- calcGradientsBatch weights trainingData
+		(gradients :: [Matrix]) <- calcGradientsBatchWithRnd weights trainingData
 		let newWeights =
 			applyCorrectionsDefault learningParams lastGradients gradients weights
 		return $
@@ -264,6 +264,23 @@ calcGradientsBatch weights trainingData =
 			map (\(ws,rnd) -> (rnd `Lina.scale`) <$> ws) $
 			gradientsForEachSample `zip` randomVec
 			-}
+
+calcGradientsBatchWithRnd ::
+	forall m . (MonadLog m, MonadRandom m) =>
+	ClassificationParam -> TrainingDataInternal -> m [Matrix]
+calcGradientsBatchWithRnd weights trainingData =
+	combineGradients
+	=<<
+		(mapM (gradientsFromSample `flip` weights) trainingData :: m [[Matrix]])
+	where
+		combineGradients :: [[Matrix]] -> m [Matrix]
+		combineGradients gradientsForEachSample =
+			do
+				randomVec <- getRandomRs (0,1)
+				return $
+					foldr1 (zipWith (+)) $
+					map (\(ws,rnd) -> (rnd `Lina.scale`) <$> ws) $
+					gradientsForEachSample `zip` randomVec
 
 {-
 adjustWeightsOnLine ::
