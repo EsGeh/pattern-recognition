@@ -4,13 +4,11 @@ module Main where
 
 import qualified LoadTestData as Load
 import Types
+import qualified Plot
 import NeuralNetworksTest.TestImpl as Test
 
---import qualified PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Types
-
---import Data.List( intercalate )
 
 
 -----------------------------------------------------------------
@@ -20,14 +18,17 @@ import PatternRecogn.Types
 defTestParams dimensions =
 	Test.TestFunctionParams{
 		loggingFreq = 0,
+		logProgressFreq = 1,
 		learningParams =
 			LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
-		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.0001],
+		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001, NN.StopAfterMaxIt 10000],
 		networkParams = NN.NetworkParams{
 			NN.dims = dimensions,
 			NN.outputInterpretation = (NN.outputInterpretationMaximum $ last dimensions)
 		}
 	}
+
+plotPath descr = ("plots/" ++ descr ++ ".png")
 
 main :: IO ()
 main =
@@ -35,117 +36,32 @@ main =
 	do
 
 {-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"and\"... with momentum"
-		Test.testNeuronalNetworks
-			(defTestParams [2])
-			(logicalOp_testInput (&&))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"and\"... using silva almeida optimisation"
-		Test.testNeuronalNetworks
-			(defTestParams [2]){
-				learningParams = LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams
-			}
-			(logicalOp_testInput (&&))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"and\"... using RProp optimisation"
-		Test.testNeuronalNetworks
-			(defTestParams [2]){
-				learningParams =
-					LearningParamsRProp $ defRPropParams
-			}
-			(logicalOp_testInput (&&))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"or\"... with momentum"
-		Test.testNeuronalNetworks
-			(defTestParams [2])
-			(logicalOp_testInput (||))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"or\"... using silva almeida optimisation"
-		Test.testNeuronalNetworks
-			(defTestParams [2]){
-				learningParams = LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams
-			}
-			(logicalOp_testInput (||))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"or\"... using RProp optimisation"
-		Test.testNeuronalNetworks
-			(defTestParams [2]){
-				learningParams =
-					LearningParamsRProp $ defRPropParams
-			}
-			(logicalOp_testInput (||))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"xor\"... with momentum"
-		Test.testNeuronalNetworks
+		testAll "AND" (defTestParams [2]) (logicalOp_testInput (&&))
+		testAll "OR" (defTestParams [2]) (logicalOp_testInput (||))
+		testAll "XOR"
 			(defTestParams [2,1]){
 				networkParams = NN.NetworkParams{
 					NN.dims = [2,1],
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
-				},
-				loggingFreq = 100000
-			}
-			(logicalOp_testInput (\x y -> x && not y || y && not x))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"xor\"... using silva almeida optimisation"
-		Test.testNeuronalNetworks
-			(defTestParams [2,1]){
-				learningParams = LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams,
-				networkParams = NN.NetworkParams{
-					NN.dims = [2,1],
-					NN.outputInterpretation = NN.outputInterpretationSingleOutput
-				},
-				loggingFreq = 100000
-			}
-			(logicalOp_testInput (\x y -> x && not y || y && not x))
-
-		doLog $ "-------------------------------------------"
-		doLog $ "learning operator \"xor\"... using RProp optimisation"
-		Test.testNeuronalNetworks
-			(defTestParams [2,1]){
-				learningParams = LearningParamsRProp $ defRPropParams,
-				networkParams = NN.NetworkParams{
-					NN.dims = [2,1],
-					NN.outputInterpretation = NN.outputInterpretationSingleOutput
-				},
-				loggingFreq = 100000
-			}
+				}}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
 -}
 
 		let
 			labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels
-
 		doLog $ "-------------------------------------------"
-		doLog $ "testing to classify test data (from file)..."
+		doLog "running digits (from file)"
 		Test.testNeuronalNetworks
 			(defTestParams [32,10]){
-				learningParams = LearningParamsDefault $ defDefaultLearningParams,
-				stopConds = [NN.StopIfConverges 0.00001, NN.StopIfQualityReached 1],
-				loggingFreq = 50
+				loggingFreq = 50,
+				learningParams =
+					LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
+				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001]
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
-
-{-
-		doLog $ "-------------------------------------------"
-		doLog $ "testing to classify test data (from file)..."
-		Test.testNeuronalNetworks
-			(defTestParams [10,10]){
-				learningParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 1 },
-				stopConds = [NN.StopIfConverges 0.0001, NN.StopIfQualityReached 1],
-				loggingFreq = 100
-			}
-			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
--}
-
+		liftIO $ putStrLn $ "done"
+		return ()
 	where
 		handleErrors x =
 			do
@@ -155,11 +71,37 @@ main =
 					return
 					valOrErr
 
-{-
-startToClassifyInfoStr l =
-	concat $
-			[ "----------------------------------------------\n"
-			, "classifying to labels ", intercalate "," $ map (show . snd) l
-			, " in files ", intercalate "," $ map (show . fst) l
-			]
--}
+testAll dataName testParams testData = 
+	plotTests (plotPath dataName) $ [
+	( dataName ++ " with momentum",
+		replicate 1 $ Test.testNeuronalNetworks
+			testParams
+			testData 
+	)
+	, ( dataName ++ " with Silva Almeida",
+		replicate 1 $ Test.testNeuronalNetworks
+			testParams{
+				learningParams = LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams
+			}
+			testData 
+	)
+	, ( dataName ++ " with RProp",
+		replicate 1 $ Test.testNeuronalNetworks
+			testParams{
+				learningParams = LearningParamsRProp $ defRPropParams
+			}
+			testData 
+	)
+	]
+
+plotTests plotToPath tests =
+	do
+		testResults <- forM tests $ \(descr, subTests) ->
+			fmap (descr,) $
+			forM subTests $ \test ->
+			do
+				doLog $ "-------------------------------------------"
+				doLog $ "running " ++ descr
+				test
+		doLog $ "plotting results to " ++ plotToPath ++ "..."
+		Plot.plotProgresses plotToPath testResults

@@ -79,6 +79,7 @@ test-suite neuralNetworks-test
     , data-default-class
     , lens
     , MonadRandom
+    , dlist
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
     -Wall -Wno-missing-signatures -Wno-tabs
