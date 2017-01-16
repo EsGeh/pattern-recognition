@@ -22,6 +22,7 @@ main =
 	handleErrors $
 	do
 
+{-
 		doLog $ "-------------------------------------------"
 		doLog $ "testing with operator \"and\"..."
 		Test.testNeuronalNetworks
@@ -64,6 +65,7 @@ main =
 				}
 			}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
+-}
 
 		let
 			labels = [3,5,7,8]
@@ -72,16 +74,17 @@ main =
 		doLog $ "testing to classify test data (from file)..."
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
-				loggingFreq = 100,
-				learningParams = defLearningParams{ learnRate = 1 },
-				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
+				loggingFreq = 50,
+				learningParams = defLearningParams{ learnRate = 0.1 },
+				stopConds = [NN.StopIfConverges 0.00001, NN.StopIfQualityReached 1],
 				networkParams = NN.NetworkParams{
-					NN.dims = [10],
+					NN.dims = [32,10],
 					NN.outputInterpretation = (NN.outputInterpretationMaximum 10)
 				}
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
 
+{-
 		doLog $ "-------------------------------------------"
 		doLog $ "testing to classify test data (from file)..."
 		Test.testNeuronalNetworks
@@ -95,6 +98,7 @@ main =
 				}
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
+-}
 
 	where
 		handleErrors x =
