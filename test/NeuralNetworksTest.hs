@@ -34,8 +34,7 @@ main :: IO ()
 main =
 	handleErrors $
 	do
-
-{-
+		{-
 		testAll "AND" (defTestParams [2]) (logicalOp_testInput (&&))
 		testAll "OR" (defTestParams [2]) (logicalOp_testInput (||))
 		testAll "XOR"
@@ -45,8 +44,7 @@ main =
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				}}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
--}
-
+		-}
 		let
 			labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels

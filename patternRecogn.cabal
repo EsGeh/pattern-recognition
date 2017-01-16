@@ -52,6 +52,8 @@ library
     , mtl
     , vector
     , MonadRandom
+    , containers
+    , deepseq
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
 
@@ -80,6 +82,7 @@ test-suite neuralNetworks-test
     , lens
     , MonadRandom
     , dlist
+    , containers
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
     -Wall -Wno-missing-signatures -Wno-tabs
