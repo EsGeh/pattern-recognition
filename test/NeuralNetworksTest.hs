@@ -15,13 +15,20 @@ import PatternRecogn.Types
 -- IO stuff:
 -----------------------------------------------------------------
 
+defLearningParams =
+	LearningParams{
+		learningP_specificParams = LearningParamsDefault $ defDefaultLearningParams,
+		learningP_sampleSize = Nothing
+	}
+
 defTestParams dimensions =
 	Test.TestFunctionParams{
 		loggingFreq = 0,
 		logProgressFreq = 1,
-		learningParams =
-			LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
-		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001, NN.StopAfterMaxIt 10000],
+		learningParams = defLearningParams{
+				learningP_specificParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 }
+		},
+		stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001, NN.StopAfterMaxIt 1000],
 		networkParams = NN.NetworkParams{
 			NN.dims = dimensions,
 			NN.outputInterpretation = (NN.outputInterpretationMaximum $ last dimensions)
@@ -34,7 +41,7 @@ main :: IO ()
 main =
 	handleErrors $
 	do
-		{-
+{-
 		testAll "AND" (defTestParams [2]) (logicalOp_testInput (&&))
 		testAll "OR" (defTestParams [2]) (logicalOp_testInput (||))
 		testAll "XOR"
@@ -44,9 +51,10 @@ main =
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				}}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
-		-}
+-}
 		let
-			labels = [3,5,7,8]
+			labels = [0..9]
+			--labels = [3,5,7,8]
 			paths = map Load.pathFromLabel labels
 		doLog $ "-------------------------------------------"
 		doLog "running digits (from file)"
@@ -54,8 +62,9 @@ main =
 			(defTestParams [32,10]){
 				loggingFreq = 50,
 				logProgressFreq = 0,
-				learningParams =
-					LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
+				learningParams = defLearningParams{
+					learningP_specificParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 }
+				},
 				stopConds = [NN.StopIfQualityReached 1]
 				--stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001]
 			}
@@ -72,29 +81,38 @@ main =
 					valOrErr
 
 testAll dataName testParams testData = 
-	plotTests (plotPath dataName) $ [
-	( dataName ++ " with momentum",
-		replicate 1 $ Test.testNeuronalNetworks
-			testParams
-			testData 
-	)
-	, ( dataName ++ " with Silva Almeida",
-		replicate 1 $ Test.testNeuronalNetworks
-			testParams{
-				learningParams = LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams
-			}
-			testData 
-	)
-	, ( dataName ++ " with RProp",
-		replicate 1 $ Test.testNeuronalNetworks
-			testParams{
-				learningParams = LearningParamsRProp $ defRPropParams
-			}
-			testData 
-	)
-	]
+	let
+		measureFreq = logProgressFreq testParams
+	in
+		plotTests (plotPath dataName) measureFreq $
+		[
+		( dataName ++ " with momentum",
+			replicate 1 $ Test.testNeuronalNetworks
+				testParams
+				testData 
+		)
+		, ( dataName ++ " with Silva Almeida",
+			replicate 1 $ Test.testNeuronalNetworks
+				testParams{
+					learningParams = defLearningParams{
+						learningP_specificParams = LearningParamsSilvaAlmeida $ defSilvaAlmeidaParams
+					}
+				}
+				testData 
+		)
+		, ( dataName ++ " with RProp",
+			replicate 1 $ Test.testNeuronalNetworks
+				testParams{
+					learningParams = defLearningParams{
+						learningP_specificParams = LearningParamsRProp $ defRPropParams
+					}
+				}
+				testData 
+		)
+		]
 
-plotTests plotToPath tests =
+plotTests :: String -> Int -> [(String, [ErrT IO [R]])] -> ErrT IO ()
+plotTests plotToPath measureFreq tests =
 	do
 		testResults <- forM tests $ \(descr, subTests) ->
 			fmap (descr,) $
@@ -104,4 +122,4 @@ plotTests plotToPath tests =
 				doLog $ "running " ++ descr
 				test
 		doLog $ "plotting results to " ++ plotToPath ++ "..."
-		Plot.plotProgresses plotToPath testResults
+		Plot.plotProgresses measureFreq plotToPath testResults
