@@ -23,15 +23,36 @@ data NetworkParams
 		outputInterpretation :: OutputInterpretation
 	}
 
-data LearningParams
-	= LearningParams {
+type LearningParams = Either LearningParamsDefault LearningParamsSilvaAlmeida
+
+data LearningParamsDefault
+	= LearningParamsDefault {
 		learnRate :: R,
 		dampingFactor :: R
 	}
-defLearningParams =
-	LearningParams {
+defLearningParamsDefault =
+	LearningParamsDefault {
 		learnRate = 0.1,
 		dampingFactor = 0
+	}
+
+data LearningParamsSilvaAlmeida
+	= LearningParamsSilvaAlmeida {
+		{-
+		stepMin :: Maybe R,
+		stepMax :: Maybe R,
+		-}
+		accelerateFactor :: R,
+		decelerateFactor :: R
+	}
+defLearningParamsSilvaAlmeida =
+	LearningParamsSilvaAlmeida {
+		{-
+		stepMin = 0.1,
+		stepMax = 10,
+		-}
+		accelerateFactor = 2,
+		decelerateFactor = 0.5
 	}
 
 type NetworkDimensions = [Int]
@@ -80,12 +101,18 @@ outputInterpretationSingleOutput =
 data NetworkTrainingData =
 	NetworkTrainingData {
 		nwData_weights :: ClassificationParam,
-		nwData_gradients :: [Matrix]
+		nwData_gradients :: [Matrix],
+		nwData_stepWidths :: [Matrix]
 	}
 
 initialTrainingData weights =
-	NetworkTrainingData weights $
-	map (\x -> Lina.konst 0 $ Lina.size x) weights
+	NetworkTrainingData{
+		nwData_weights = weights,
+		nwData_gradients =
+			map (\x -> Lina.konst 0 $ Lina.size x) weights,
+		nwData_stepWidths =
+			map (Lina.konst 0.1 . Lina.size) weights
+	}
 
 -- | sums up element wise differences
 paramsDiff newWeights weights =

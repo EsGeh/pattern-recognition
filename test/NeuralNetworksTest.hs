@@ -28,7 +28,9 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
-				learningParams = defLearningParams{ learnRate = 0.1 },
+				learningParams =
+					Right $ defLearningParamsSilvaAlmeida,
+					--Left $ defLearningParamsDefault{ learnRate = 0.1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2],
@@ -42,7 +44,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 0,
-				learningParams = defLearningParams{ learnRate = 0.1 },
+				learningParams = Left $ defLearningParamsDefault{ learnRate = 0.1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2],
@@ -56,7 +58,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 1000,
-				learningParams = defLearningParams{ learnRate = 1 },
+				learningParams = Left $ defLearningParamsDefault{ learnRate = 1 },
 				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.0000001],
 				networkParams = NN.NetworkParams{
 					NN.dims = [2,1],
@@ -75,7 +77,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 50,
-				learningParams = defLearningParams{ learnRate = 0.1 },
+				learningParams = Left $ defLearningParamsDefault{ learnRate = 0.1 },
 				stopConds = [NN.StopIfConverges 0.00001, NN.StopIfQualityReached 1],
 				networkParams = NN.NetworkParams{
 					NN.dims = [32,10],
@@ -90,7 +92,7 @@ main =
 		Test.testNeuronalNetworks
 			Test.TestFunctionParams{
 				loggingFreq = 100,
-				learningParams = defLearningParams{ learnRate = 1 },
+				learningParams = Left $ defLearningParamsDefault{ learnRate = 1 },
 				stopConds = [NN.StopIfConverges 0.001, NN.StopIfQualityReached 1],
 				networkParams = NN.NetworkParams{
 					NN.dims = [10,10],
