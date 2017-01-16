@@ -77,7 +77,6 @@ testNeuronalNetworks
 							]
 						-- add last value:
 						logProgressEntry $ quality 
-			return ()
 	where
 		testWithTrainingData nw =
 			testNW nw
