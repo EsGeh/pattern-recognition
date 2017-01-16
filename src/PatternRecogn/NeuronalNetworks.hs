@@ -203,7 +203,7 @@ adjustWeightsBatchSilvaAlmeida learningParams trainingData weights =
 	askLastStepWidths >>= \(lastStepWidths:_) ->
 	lift $
 	do
-		(gradients :: [Matrix]) <- calcGradientsBatch weights trainingData
+		let gradients :: [Matrix] = calcGradientsBatch weights trainingData
 		let (newWeights, stepWidths) =
 			applyCorrectionsSilvaAlmeida learningParams lastGradients lastStepWidths gradients weights
 		return $
@@ -218,7 +218,7 @@ adjustWeightsBatchRProp learningParams trainingData weights =
 	askLastStepWidths >>= \(lastStepWidths:_) ->
 	lift $
 	do
-		(gradients :: [Matrix]) <- calcGradientsBatch weights trainingData
+		let (gradients :: [Matrix]) = calcGradientsBatch weights trainingData
 		let (newWeights, stepWidths) =
 			applyCorrectionsRProp learningParams lastGradients lastStepWidths gradients weights
 		return $
@@ -250,28 +250,22 @@ adjustWeightsBatchDefault learningParams trainingData weights =
 			}
 
 calcGradientsBatch ::
-	forall m . MonadLog m =>
-	ClassificationParam -> TrainingDataInternal -> m [Matrix]
+	ClassificationParam -> TrainingDataInternal -> [Matrix]
 calcGradientsBatch weights trainingData =
-	combineGradients
-	<$>
-	(mapM (gradientsFromSample `flip` weights) trainingData :: m [[Matrix]])
+	combineGradients $
+	(map (gradientsFromSample `flip` weights) trainingData :: [[Matrix]])
 	where
+		combineGradients :: [[Matrix]] -> [Matrix]
 		combineGradients gradientsForEachSample =
 			foldr1 (zipWith (+)) $
 			gradientsForEachSample
-			{-
-			map (\(ws,rnd) -> (rnd `Lina.scale`) <$> ws) $
-			gradientsForEachSample `zip` randomVec
-			-}
 
 calcGradientsBatchWithRnd ::
 	forall m . (MonadLog m, MonadRandom m) =>
 	ClassificationParam -> TrainingDataInternal -> m [Matrix]
 calcGradientsBatchWithRnd weights trainingData =
-	combineGradients
-	=<<
-		(mapM (gradientsFromSample `flip` weights) trainingData :: m [[Matrix]])
+	combineGradients $
+	(map (gradientsFromSample `flip` weights) trainingData :: [[Matrix]])
 	where
 		combineGradients :: [[Matrix]] -> m [Matrix]
 		combineGradients gradientsForEachSample =
@@ -351,11 +345,9 @@ applyCorrectionsDefault DefaultLearningParams{..} lastGradients gradients weight
 		w - learnRate `Lina.scale` gradient + dampingFactor `Lina.scale` lastGradient
 
 gradientsFromSample ::
-	MonadLog m =>
 	(Vector, Vector)
-	-> ClassificationParam -> m [Matrix]
+	-> ClassificationParam -> [Matrix]
 gradientsFromSample (input, expectedOutput) weights =
-	do
 		let
 			outputs = reverse $ feedForward weights input :: [Vector] -- output for every stage of the network from (output to input)
 			derivatives = -- output to input
@@ -364,7 +356,8 @@ gradientsFromSample (input, expectedOutput) weights =
 				outputs
 			(lastOutput:_) = outputs
 			err = lastOutput - expectedOutput
-		gradients <- backPropagate outputs derivatives err weights
+		in
+			backPropagate outputs derivatives err weights
 		{-
 		doLog $ "--------------------"
 		doLog $ concat ["outputs: ", intercalate "\n" $ map show outputs]
@@ -372,15 +365,13 @@ gradientsFromSample (input, expectedOutput) weights =
 		doLog $ concat ["err: ", show err]
 		doLog $ concat ["corrections: ", intercalate "\n" $ map show corrections]
 		-}
-		return gradients
 
 backPropagate ::
-	MonadLog m =>
 	[Vector] -- outputs (output to input)
 	-> [Vector] -- derivatives (output to input)
 	-> Vector -- error
 	-> ClassificationParam -- network weights (output to input)
-	-> m [Matrix] -- gradients for every layer
+	-> [Matrix] -- gradients for every layer
 backPropagate
 		outputs
 		derivatives
@@ -389,7 +380,6 @@ backPropagate
 	=
 	(flip (.)) reverse $ -- (before all: reverse weights)
 	\weightsOutToIn -> -- weights from output to input...
-	do
 		let
 			-- deltas (from output to input):
 			deltas :: [Vector]
@@ -407,7 +397,7 @@ backPropagate
 									deriv * (removeLastRow weight #> delta)
 			removeLastRow = (??(Lina.DropLast 1, Lina.All))
 		--doLog $ "deltas dims: " ++ show (map Lina.size deltas)
-		return $
+		in
 			reverse $
 			flip map (zip deltas (drop 1 outputs)) $
 			\(delta, output) ->

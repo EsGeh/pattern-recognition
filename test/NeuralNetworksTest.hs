@@ -52,12 +52,14 @@ main =
 			paths = map Load.pathFromLabel labels
 		doLog $ "-------------------------------------------"
 		doLog "running digits (from file)"
-		Test.testNeuronalNetworks
+		_ <- Test.testNeuronalNetworks
 			(defTestParams [32,10]){
 				loggingFreq = 50,
+				logProgressFreq = 0,
 				learningParams =
 					LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 },
-				stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001]
+				stopConds = [NN.StopIfQualityReached 1]
+				--stopConds = [NN.StopIfQualityReached 1, NN.StopIfConverges 0.00001]
 			}
 			=<< (fromBundledTestData <$> Load.readTestInput (paths `zip` labels))
 		liftIO $ putStrLn $ "done"
