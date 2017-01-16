@@ -10,6 +10,8 @@ import NeuralNetworksTest.TestImpl as Test
 import PatternRecogn.NeuronalNetworks as NN
 import PatternRecogn.Types
 
+import System.IO
+
 
 -----------------------------------------------------------------
 -- IO stuff:
@@ -35,10 +37,11 @@ defTestParams dimensions =
 		}
 	}
 
-plotPath descr = ("plots/" ++ descr ++ ".png")
+plotPath descr = ("plots/" ++ descr ++ ".svg")
 
 main :: IO ()
 main =
+	(hSetBuffering stdout NoBuffering >>) $
 	handleErrors $
 	do
 
