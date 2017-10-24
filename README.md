@@ -5,6 +5,7 @@
 
 currently implemented:
 
+* nearest neighbour classification
 * Linear Regression classification (just binary)
 * Gauss classification
 * Projected Gauss classification based on Fisher Discriminant (just binary)
