@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module AbstractTest where
 
 import Types
@@ -8,6 +9,7 @@ import PatternRecogn.Types
 
 import qualified PatternRecogn.Lina as Lina
 import PatternRecogn.Utils
+import Data.List
 
 
 testWithAlgBin ::
@@ -56,18 +58,23 @@ testWithAlg'
 			calcClassificationQuality expectedLabels_training classified_training
 		liftIO $ putStrLn $ concat $
 			[ "training data quality: ", show successRate_training]
-		case mInput of
-			Just (inputData, expectedLabels) ->
-				do
-					classified <-
-						classify
-							classificationParam
-							inputData
-					let quality = calcClassificationQuality expectedLabels classified
-					liftIO $ putStrLn $ concat $
-						[ "test data quality: ", show quality ]
-			Nothing ->
-				return ()
+		liftIO $ putStrLn $ concat $
+			[ "confusion matrix:\n"
+			, dispf 2 $ confusionMatr expectedLabels_training classified_training
+			]
+		maybe (return ()) `flip` mInput $ \(inputData, expectedLabels) ->
+			do
+				classified <-
+					classify
+						classificationParam
+						inputData
+				let quality = calcClassificationQuality expectedLabels classified
+				liftIO $ putStrLn $ concat $
+					[ "test data quality: ", show quality ]
+				liftIO $ putStrLn $ concat $
+					[ "confusion matrix:\n"
+					, dispf 2 $ confusionMatr expectedLabels_training classified_training
+					]
 
 -- TrainingDataBundled = [(Matrix, Label)]
 
@@ -78,3 +85,17 @@ calcTestDataFromBundledTrainingData trainingData =
 		(matrices, labels) = (map fst temp, map snd temp)
 	in
 		(foldl1 (Lina.===) matrices, Lina.fromList $ join $ labels)
+
+confusionMatr :: VectorOf Label -> VectorOf Label -> Matrix
+confusionMatr expected res =
+	build (dims, dims) $ \(row :: Double) (col :: Double) ->
+		(/ fromIntegral (size res)) $
+		fromIntegral $ length $
+		filter (\(correctLabel, resultLabel) -> correctLabel == floor col && resultLabel == floor row) $
+		testResultList
+	where
+		testResultList :: [(Label, Label)]
+		testResultList = toList expected `zip` toList res
+		dims = length allLabels
+		allLabels =
+			nub $ toList expected

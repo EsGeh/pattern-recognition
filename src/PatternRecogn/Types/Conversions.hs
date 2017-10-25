@@ -10,6 +10,7 @@ import PatternRecogn.Lina as Lina
 import Control.Monad
 
 
+toTrainingDataBin :: TrainingDataBundled -> Maybe TrainingDataBin
 toTrainingDataBin bundled =
 	let
 		potentialData = take 2 bundled
