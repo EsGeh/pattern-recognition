@@ -44,6 +44,7 @@ main =
 	(hSetBuffering stdout NoBuffering >>) $
 	handleErrors $
 	do
+
 		testAll "AND" (defTestParams [2]) (logicalOp_testInput (&&))
 		testAll "OR" (defTestParams [2]) (logicalOp_testInput (||))
 		testAll "XOR"
@@ -53,6 +54,7 @@ main =
 					NN.outputInterpretation = NN.outputInterpretationSingleOutput
 				}}
 			(logicalOp_testInput (\x y -> x && not y || y && not x))
+
 		let
 			--labels = [0..9]
 			labels = [3,5,7,8]
@@ -61,7 +63,10 @@ main =
 		testAll "digits"
 			(defTestParams [32,10]){
 				loggingFreq = 50,
-				--logProgressFreq = 50,
+				logProgressFreq = 1,
+				learningParams = defLearningParams{
+					learningP_specificParams = LearningParamsDefault $ defDefaultLearningParams{ learnRate = 0.1 }
+				},
 				stopConds = [NN.StopIfQualityReached 0.9, NN.StopIfConverges 0.00001, NN.StopAfterMaxIt 10000]
 			}
 			digitsTestData
