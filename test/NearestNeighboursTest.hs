@@ -19,8 +19,14 @@ import Data.List( intercalate )
 main :: IO ()
 main =
 	handleErrors $
-	testAlgorithm
-	--forM_ (allPairs [3,5,7,8]) $ uncurry testGauss
+	do
+		liftIO $ putStrLn "loading all data from file..."
+		testData <- loadData
+		liftIO $ putStrLn "testing nearest neighbour classification..."
+		forM_ [1..5] $ \k ->
+			do
+			liftIO $ putStrLn $ concat [ "k = ", show k ]
+			testAlgorithm testData k
 	where
 		handleErrors x =
 			do
@@ -30,16 +36,14 @@ main =
 					return
 					valOrErr
 
-testAlgorithm :: ErrT IO ()
-testAlgorithm =
-	do
-		liftIO $ putStrLn "loading all data from file..."
-		testData <-
-			Load.readTestInput $
-			map (\digit -> (Load.pathFromLabel digit, digit))
-			[0..9]
-		liftIO $ putStrLn "testing nearest neighbour classification..."
-		Test.testWithAlg 
-			(return . NearestNeighbours.calcClassificationParams . fromBundled)
-			(\param -> return . NearestNeighbours.classify param)
-			testData
+loadData =
+	Load.readTestInput $
+	map (\digit -> (Load.pathFromLabel digit, digit))
+	[0..9]
+
+testAlgorithm :: TestDataBundled -> Int -> ErrT IO ()
+testAlgorithm testData k =
+	Test.testWithAlg 
+		(return . NearestNeighbours.calcClassificationParams . fromBundled)
+		(\param -> return . NearestNeighbours.classify k param)
+		testData
