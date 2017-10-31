@@ -26,6 +26,7 @@ testGauss =
 		(\param input ->
 			return $ Gauss.classify param input)
 
+testLinearRegression :: MonadIO m => TestDataBin -> m ()
 testLinearRegression =
 	testWithAlgBin 
 		(\trainingData-> return $ LinearReg.calcClassificationParams trainingData)
