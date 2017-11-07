@@ -97,7 +97,6 @@ test-suite linearRegression-test
     Types
     , LoadTestData
     , Utils
-    , TestFunctions
     , AbstractTest
     , Plot
   build-depends:
@@ -126,7 +125,6 @@ test-suite gauss-test
     Types
     , LoadTestData
     , Utils
-    , TestFunctions
     , AbstractTest
     , Plot
   build-depends:
@@ -155,7 +153,6 @@ test-suite projectedGauss-test
     Types
     , LoadTestData
     , Utils
-    , TestFunctions
     , AbstractTest
     , Plot
   build-depends:

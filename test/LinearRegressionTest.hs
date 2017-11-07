@@ -1,10 +1,11 @@
 -- {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
+import qualified PatternRecogn.LinearRegression as LinearReg
+import qualified AbstractTest as Test
 import qualified LoadTestData as Load
 import Utils( allPairs )
 import Types
-import qualified TestFunctions as Test
 
 import PatternRecogn.Types
 
@@ -39,7 +40,12 @@ test label1 label2 =
 			liftIO $ putStrLn $ concat $
 				["testing classification of ", intercalate ", " $ map show paths]
 			testData <- Load.readTestInputBin path1 path2 label1 label2
-			--testData <- Load.readTestInputBin $ paths `zip` labels
 
 			liftIO $ putStrLn $ "testing linear regression classification:"
-			Test.testLinearRegression $ testData
+			testLinearRegression $ testData
+
+testLinearRegression :: MonadIO m => TestDataBin -> m ()
+testLinearRegression =
+	Test.testWithAlgBin 
+		(\trainingData-> return $ LinearReg.calcClassificationParams trainingData)
+		(\param input -> return $ LinearReg.classify param input)
