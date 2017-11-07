@@ -1,11 +1,11 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TupleSections #-}
 module Main where
 
+import qualified PatternRecogn.Gauss.Classify as Gauss
+import qualified AbstractTest as Test
 import qualified LoadTestData as Load
 import Utils( allPairs )
 import Types
-import qualified TestFunctions as Test
 
 import PatternRecogn.Types
 
@@ -20,8 +20,14 @@ import Data.List( intercalate )
 main :: IO ()
 main =
 	handleErrors $
-	forM_ (allPairs [3,5,7,8]) $ uncurry testGauss
+	do
+		liftIO $ putStrLn $ "testing binary classification:"
+		forM_ (allPairs labels) $ \(label1, label2) ->
+			runTest [label1, label2]
+		liftIO $ putStrLn $ "testing classification:"
+		runTest labels
 	where
+		labels = [3,5,7,8]
 		handleErrors x =
 			do
 				valOrErr <- runExceptT x
@@ -30,19 +36,24 @@ main =
 					return
 					valOrErr
 
-testGauss :: Label -> Label -> ErrT IO ()
-testGauss label1 label2 =
+runTest :: [Label] -> ErrT IO ()
+runTest labels =
 	let
-		paths@[path1,path2] = map Load.pathFromLabel labels
-		labels = [label1, label2]
+		paths = map Load.pathFromLabel labels
 	in
 		do
 			liftIO $ putStrLn $ concat $
 				["testing classification of ", intercalate ", " $ map show paths]
-			testData <- Load.readTestInputBin path1 path2 label1 label2
-			--testData <- Load.readTestInputBin $ paths `zip` labels
+			testData <-
+				Load.readTestInput $ paths `zip` labels
 
 			liftIO $ putStrLn $ "testing gauss classification:"
-			Test.testGauss $ testDataFromBin $ testData
-			liftIO $ putStrLn $ "testing projected gauss classification:"
-			Test.testProjectedGauss $ testData
+			testGauss $ testData
+			--liftIO $ putStrLn $ "testing projected gauss classification:"
+			--Test.testProjectedGauss $ testData
+
+testGauss =
+	Test.testWithAlg 
+		(\trainingData -> return $ Gauss.calcClassificationParams trainingData)
+		(\param input ->
+			return $ Gauss.classify param input)

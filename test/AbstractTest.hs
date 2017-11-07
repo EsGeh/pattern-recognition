@@ -60,7 +60,7 @@ testWithAlg'
 			[ "training data quality: ", show successRate_training]
 		liftIO $ putStrLn $ concat $
 			[ "confusion matrix:\n"
-			, dispf 2 $ confusionMatr expectedLabels_training classified_training
+			, dispf 3 $ confusionMatr expectedLabels_training classified_training
 			]
 		maybe (return ()) `flip` mInput $ \(inputData, expectedLabels) ->
 			do
@@ -73,7 +73,7 @@ testWithAlg'
 					[ "test data quality: ", show quality ]
 				liftIO $ putStrLn $ concat $
 					[ "confusion matrix:\n"
-					, dispf 2 $ confusionMatr expectedLabels_training classified_training
+					, dispf 3 $ confusionMatr expectedLabels_training classified_training
 					]
 
 -- TrainingDataBundled = [(Matrix, Label)]
@@ -88,6 +88,27 @@ calcTestDataFromBundledTrainingData trainingData =
 
 confusionMatr :: VectorOf Label -> VectorOf Label -> Matrix
 confusionMatr expected res =
+	build (dims, dims) $ \(rowIndex :: Double) (colIndex :: Double) ->
+		let
+			row = allLabels !! floor rowIndex
+			col = allLabels !! floor colIndex
+		in
+			(/ fromIntegral (size res)) $
+			fromIntegral $ length $
+			filter (\(correctLabel, resultLabel) -> correctLabel == col && resultLabel == row) $
+			testResultList
+	where
+		testResultList :: [(Label, Label)]
+		testResultList = toList expected `zip` toList res
+		dims = length allLabels
+		allLabels =
+			sort $
+			nub $ -- remove doubles
+			toList expected
+
+{-
+confusionMatr :: VectorOf Label -> VectorOf Label -> Matrix
+confusionMatr expected res =
 	build (dims, dims) $ \(row :: Double) (col :: Double) ->
 		(/ fromIntegral (size res)) $
 		fromIntegral $ length $
@@ -99,3 +120,4 @@ confusionMatr expected res =
 		dims = length allLabels
 		allLabels =
 			nub $ toList expected
+-}

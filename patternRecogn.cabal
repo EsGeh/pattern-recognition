@@ -89,6 +89,90 @@ test-suite nearestNeighbours-test
     -Wall -Wno-missing-signatures -Wno-tabs
   default-language:    Haskell2010
 
+test-suite linearRegression-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             LinearRegressionTest.hs
+  other-modules:
+    Types
+    , LoadTestData
+    , Utils
+    , AbstractTest
+    , Plot
+  build-depends:
+    patternRecogn
+    , base >= 4.7 && < 5
+    , hmatrix
+    , cassava
+    , mtl
+    , bytestring
+    , vector
+    , Chart
+    , Chart-diagrams
+    , data-default-class
+    , lens
+    , MonadRandom
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N
+    -Wall -Wno-missing-signatures -Wno-tabs
+  default-language:    Haskell2010
+
+test-suite gauss-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             GaussTest.hs
+  other-modules:
+    Types
+    , LoadTestData
+    , Utils
+    , AbstractTest
+    , Plot
+  build-depends:
+    patternRecogn
+    , base >= 4.7 && < 5
+    , hmatrix
+    , cassava
+    , mtl
+    , bytestring
+    , vector
+    , Chart
+    , Chart-diagrams
+    , data-default-class
+    , lens
+    , MonadRandom
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N
+    -Wall -Wno-missing-signatures -Wno-tabs
+  default-language:    Haskell2010
+
+test-suite projectedGauss-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             ProjectedGaussTest.hs
+  other-modules:
+    Types
+    , LoadTestData
+    , Utils
+    , AbstractTest
+    , Plot
+  build-depends:
+    patternRecogn
+    , base >= 4.7 && < 5
+    , hmatrix
+    , cassava
+    , mtl
+    , bytestring
+    , vector
+    , Chart
+    , Chart-diagrams
+    , data-default-class
+    , lens
+    , MonadRandom
+  ghc-options:
+    -threaded -rtsopts -with-rtsopts=-N
+    -Wall -Wno-missing-signatures -Wno-tabs
+  default-language:    Haskell2010
+
 test-suite neuralNetworks-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
@@ -115,35 +199,6 @@ test-suite neuralNetworks-test
     , MonadRandom
     , dlist
     , containers
-  ghc-options:
-    -threaded -rtsopts -with-rtsopts=-N
-    -Wall -Wno-missing-signatures -Wno-tabs
-  default-language:    Haskell2010
-
-test-suite gauss-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             GaussTest.hs
-  other-modules:
-    Types
-    , LoadTestData
-    , Utils
-    , TestFunctions
-    , AbstractTest
-    , Plot
-  build-depends:
-    patternRecogn
-    , base >= 4.7 && < 5
-    , hmatrix
-    , cassava
-    , mtl
-    , bytestring
-    , vector
-    , Chart
-    , Chart-diagrams
-    , data-default-class
-    , lens
-    , MonadRandom
   ghc-options:
     -threaded -rtsopts -with-rtsopts=-N
     -Wall -Wno-missing-signatures -Wno-tabs
