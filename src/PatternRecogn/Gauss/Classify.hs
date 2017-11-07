@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 module PatternRecogn.Gauss.Classify(
 	ClassificationParam,
-
 	calcClassificationParams,
 	classify,
 	infoStringForParam
