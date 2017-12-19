@@ -20,7 +20,7 @@ Das Programm kann folgendermaßen ausgeführt werden:
 
 ## Implementierung
 
-Der Code wird als Github-Repository verwaltet (siehe [](https://github.com/EsGeh/pattern-recognition)).
+Der Code wird als Github-Repository verwaltet (siehe <https://github.com/EsGeh/pattern-recognition>).
 Um das Programm selbst zu installieren und zu kompilieren, siehe unten.
 
 ### Ordnerstruktur
@@ -322,6 +322,6 @@ confusion matrix:
 ### Kompilieren
 
 	$ git clone https://github.com/EsGeh/pattern-recognition
-	$ git checkout exercise8-release
+	$ git checkout WS2017_exercise3_release
 	$ stack setup
 	$ stack build
